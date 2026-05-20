@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Projects/bomberman/build",
+  "command": "C:\\mingw64\\bin\\g++.exe  @CMakeFiles/game.dir/includes_CXX.rsp -g -std=gnu++17 -o CMakeFiles\\game.dir\\main.cpp.obj -c C:\\Projects\\bomberman\\main.cpp",
+  "file": "C:/Projects/bomberman/main.cpp",
+  "output": "CMakeFiles/game.dir/main.cpp.obj"
+}
+]
