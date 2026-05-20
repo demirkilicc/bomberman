@@ -1,0 +1,3 @@
+C:/Users/Emir Berk Kılıç/Desktop/bomberman/build/CMakeFiles/game.dir
+C:/Users/Emir Berk Kılıç/Desktop/bomberman/build/CMakeFiles/edit_cache.dir
+C:/Users/Emir Berk Kılıç/Desktop/bomberman/build/CMakeFiles/rebuild_cache.dir
