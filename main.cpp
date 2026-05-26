@@ -43,6 +43,16 @@ struct Explosion
     sf::Clock timer;
 };
 
+struct Enemy
+{
+    int gridX;
+    int gridY;
+
+    int type;
+    int health;
+  sf::Clock moveTimer;
+};
+
 
 int main()
 {
@@ -58,7 +68,32 @@ player.setFillColor(sf::Color::Cyan);
 std::vector<Bomb> bombs;
 
 std::vector<Explosion> explosions;
+std::vector<Enemy> enemies;
 bool spacePressed = false;
+Enemy fox;
+fox.gridX = 5;
+fox.gridY = 5;
+fox.type = 0;
+fox.health = 1;
+
+enemies.push_back(fox);
+
+Enemy wolf;
+wolf.gridX = 10;
+wolf.gridY = 8;
+wolf.type = 1;
+wolf.health = 2;
+
+enemies.push_back(wolf);
+
+Enemy butcher;
+butcher.gridX = 15;
+butcher.gridY = 6;
+butcher.type = 2;
+butcher.health = 5;
+
+enemies.push_back(butcher);
+
 sf::Clock moveClock;
 
 while (window.isOpen())
@@ -135,8 +170,100 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
         
         
     }
-    
-    
+    //Düşman ai
+    for (Enemy& enemy : enemies)
+    {
+        if (enemy.type == 0)
+        {
+            if  (enemy.moveTimer.getElapsedTime().asSeconds() > 0.2f)
+            {
+                int direction = rand() % 4;
+
+                if (direction == 0)
+                {
+                   if (!isWall(enemy.gridX, enemy.gridY - 1))
+                   {
+                    enemy.gridY--;
+                   }
+                   
+                }
+                if (direction == 1)
+                {
+                   if (!isWall(enemy.gridX, enemy.gridY + 1))
+                   {
+                    enemy.gridY++;
+                   }
+            }
+            if (direction == 2)
+                {
+                   if (!isWall(enemy.gridX - 1, enemy.gridY))
+                   {
+                    enemy.gridX--;
+                   }
+        }
+         if (direction == 3)
+                {
+                   if (!isWall(enemy.gridX + 1, enemy.gridY))
+                   {
+                    enemy.gridX++;
+                   }
+                }
+    enemy.moveTimer.restart();
+       }
+     }
+      if (enemy.type == 1)
+        { 
+        if  (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
+        {
+            if (playerGridX < enemy.gridX && !isWall(enemy.gridX - 1, enemy.gridY))
+                   {
+                    enemy.gridX--;
+                   }  
+            
+             else if (playerGridX > enemy.gridX && !isWall(enemy.gridX + 1, enemy.gridY))
+                   {
+                    enemy.gridX++;
+                   }  
+            
+            else if (playerGridY < enemy.gridY && !isWall(enemy.gridX, enemy.gridY - 1))
+                   {
+                    enemy.gridY--;
+                   }  
+            
+            else if (playerGridY > enemy.gridY && !isWall(enemy.gridX, enemy.gridY + 1))
+                   {
+                    enemy.gridY++;
+                   }  
+                   else
+                   {
+                    int Randomdirection = rand() % 4;
+
+                    if (Randomdirection == 0 && !isWall(enemy.gridX, enemy.gridY - 1))
+                    {
+                        
+                        enemy.gridY--;
+                    }
+                    if (Randomdirection == 1 && !isWall(enemy.gridX, enemy.gridY + 1))
+                    {
+                        
+                        enemy.gridY++;
+                    }
+                    if (Randomdirection == 2 && !isWall(enemy.gridX - 1, enemy.gridY))
+                    {
+                        
+                        enemy.gridY--;
+                    }
+                          if (Randomdirection == 3 && !isWall(enemy.gridX + 1, enemy.gridY))
+                    {
+                        
+                        enemy.gridY++;
+                    }
+                   }
+            
+            enemy.moveTimer.restart();
+        }
+    }
+}
     player.setPosition({static_cast<float>(playerGridX*TILE_SIZE),static_cast<float>(playerGridY*TILE_SIZE)});
     window.clear(sf::Color::Black);
 
@@ -349,6 +476,32 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     }
     
    }
+   for (const Enemy& enemy : enemies)
+   {
+    sf::RectangleShape enemyShape({
+        static_cast<float>(TILE_SIZE),
+        static_cast<float>(TILE_SIZE)});
+
+        if (enemy.type == 0)
+        {
+            enemyShape.setFillColor(sf::Color(255,140,0));
+        }
+
+        if (enemy.type == 1)
+        {
+            enemyShape.setFillColor(sf::Color(120,120,120));
+        }
+
+        if (enemy.type == 2)
+        {
+            enemyShape.setFillColor(sf::Color(120,0,0));
+        }
+        
+        enemyShape.setPosition({ static_cast<float>(enemy.gridX * TILE_SIZE),
+        static_cast<float>(enemy.gridY * TILE_SIZE)
+    });
+window.draw(enemyShape);
+    }
  window.draw(player);
     window.display();
 } 
