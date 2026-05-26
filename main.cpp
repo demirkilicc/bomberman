@@ -50,7 +50,17 @@ struct Enemy
 
     int type;
     int health;
-  sf::Clock moveTimer;
+
+     int direction;
+
+     bool breakingWall = false;
+
+     int breakX;
+     int breakY;
+     
+     sf::Clock moveTimer;
+    
+     sf::Clock breakTimer;
 };
 
 
@@ -69,13 +79,14 @@ std::vector<Bomb> bombs;
 
 std::vector<Explosion> explosions;
 std::vector<Enemy> enemies;
+sf::Clock moveClock;
 bool spacePressed = false;
 Enemy fox;
 fox.gridX = 5;
 fox.gridY = 5;
 fox.type = 0;
 fox.health = 1;
-
+fox.direction = rand() % 4;
 enemies.push_back(fox);
 
 Enemy wolf;
@@ -83,6 +94,7 @@ wolf.gridX = 10;
 wolf.gridY = 8;
 wolf.type = 1;
 wolf.health = 2;
+wolf.direction = rand() % 4;
 
 enemies.push_back(wolf);
 
@@ -91,10 +103,10 @@ butcher.gridX = 15;
 butcher.gridY = 6;
 butcher.type = 2;
 butcher.health = 5;
+butcher.direction = rand() % 4;
 
 enemies.push_back(butcher);
 
-sf::Clock moveClock;
 
 while (window.isOpen())
 {
@@ -173,97 +185,222 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     //Düşman ai
     for (Enemy& enemy : enemies)
     {
-        if (enemy.type == 0)
+       //tilki
+       if (enemy.type == 0)
+       {
+        if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.2f)
         {
-            if  (enemy.moveTimer.getElapsedTime().asSeconds() > 0.2f)
+            bool moved = false;
+            if (enemy.direction == 0)
             {
-                int direction = rand() % 4;
-
-                if (direction == 0)
+                if (!isWall(enemy.gridX,enemy.gridY - 1))
                 {
-                   if (!isWall(enemy.gridX, enemy.gridY - 1))
-                   {
                     enemy.gridY--;
-                   }
-                   
+                    moved = true;
                 }
-                if (direction == 1)
-                {
-                   if (!isWall(enemy.gridX, enemy.gridY + 1))
-                   {
-                    enemy.gridY++;
-                   }
+                
             }
-            if (direction == 2)
+             if (enemy.direction == 1)
+            {
+                if (!isWall(enemy.gridX,enemy.gridY + 1))
                 {
-                   if (!isWall(enemy.gridX - 1, enemy.gridY))
-                   {
-                    enemy.gridX--;
-                   }
-        }
-         if (direction == 3)
-                {
-                   if (!isWall(enemy.gridX + 1, enemy.gridY))
-                   {
-                    enemy.gridX++;
-                   }
-                }
-    enemy.moveTimer.restart();
-       }
-     }
-      if (enemy.type == 1)
-        { 
-        if  (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
-        {
-            if (playerGridX < enemy.gridX && !isWall(enemy.gridX - 1, enemy.gridY))
-                   {
-                    enemy.gridX--;
-                   }  
-            
-             else if (playerGridX > enemy.gridX && !isWall(enemy.gridX + 1, enemy.gridY))
-                   {
-                    enemy.gridX++;
-                   }  
-            
-            else if (playerGridY < enemy.gridY && !isWall(enemy.gridX, enemy.gridY - 1))
-                   {
-                    enemy.gridY--;
-                   }  
-            
-            else if (playerGridY > enemy.gridY && !isWall(enemy.gridX, enemy.gridY + 1))
-                   {
                     enemy.gridY++;
-                   }  
-                   else
-                   {
-                    int Randomdirection = rand() % 4;
-
-                    if (Randomdirection == 0 && !isWall(enemy.gridX, enemy.gridY - 1))
-                    {
-                        
-                        enemy.gridY--;
-                    }
-                    if (Randomdirection == 1 && !isWall(enemy.gridX, enemy.gridY + 1))
-                    {
-                        
-                        enemy.gridY++;
-                    }
-                    if (Randomdirection == 2 && !isWall(enemy.gridX - 1, enemy.gridY))
-                    {
-                        
-                        enemy.gridY--;
-                    }
-                          if (Randomdirection == 3 && !isWall(enemy.gridX + 1, enemy.gridY))
-                    {
-                        
-                        enemy.gridY++;
-                    }
-                   }
-            
+                    moved = true;
+                }
+                
+            }
+            if (enemy.direction == 2)
+            {
+                if (!isWall(enemy.gridX - 1,enemy.gridY))
+                {
+                    enemy.gridX--;
+                    moved = true;
+                }
+                
+            }
+             if (enemy.direction == 3)
+            {
+                if (!isWall(enemy.gridX + 1,enemy.gridY))
+                {
+                    enemy.gridX++;
+                    moved = true;
+                }
+                
+            }
+            if (!moved)
+            {
+                enemy.direction = rand() % 4;
+            }
+            if(rand() % 10 == 0)
+            {
+                enemy.direction = rand() % 4;
+            }
             enemy.moveTimer.restart();
         }
-    }
-}
+        
+       }
+       //kurt
+       if (enemy.type == 1)
+       {
+        if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
+        {
+          int distanceX = abs(playerGridX - enemy.gridX);
+          int distanceY = abs(playerGridY - enemy.gridY);
+
+          if (distanceX + distanceY <= 5)
+          {
+            bool moved = false;
+            
+            if (playerGridX < enemy.gridX)
+            {
+              if (!isWall(enemy.gridX - 1,enemy.gridY))
+                {
+                    enemy.gridX--;
+                    moved = true;
+                } 
+            }
+            else if (playerGridX > enemy.gridX)
+            {
+                if (!isWall(enemy.gridX + 1,enemy.gridY))
+                {
+                    enemy.gridX++;
+                    moved = true;
+                }
+            }
+
+             if (!moved)
+            {
+                if (playerGridY < enemy.gridY && !isWall(enemy.gridX,enemy.gridY - 1))
+                {
+                    enemy.gridY--;
+                    moved = true;
+                } 
+                 else if (playerGridY > enemy.gridY && !isWall(enemy.gridX,enemy.gridY + 1))
+                {
+                    enemy.gridY++;
+                    moved = true;
+                }
+            }
+          }
+          else 
+          {
+            bool moved = false;
+
+            int nextX = enemy.gridX;
+            int nextY = enemy.gridY;
+
+            if (enemy.direction == 0) nextY--;
+            else if (enemy.direction == 1) nextY++;
+            else if (enemy.direction == 2) nextX--;
+            else if (enemy.direction == 3) nextX++;
+            if (!isWall(nextX, nextY))
+            {
+                enemy.gridX = nextX;
+                enemy.gridY = nextY;
+                moved = true;
+            }
+            
+            if (!moved || rand() %10 == 0)
+            {
+                enemy.direction = rand() %4;
+            }
+
+        }
+        enemy.moveTimer.restart();
+       }
+     }
+     //kasap
+     if (enemy.type == 2)
+     {
+       if (enemy.breakingWall)
+       {
+        if (enemy.breakTimer.getElapsedTime().asSeconds() > 1.0f)
+        {
+         map[enemy.breakY][enemy.breakX] = '.';
+
+         enemy.breakingWall = false;
+         }
+       }
+       else if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.7f)
+       {
+        bool moved = false;
+         if (playerGridX < enemy.gridX)
+            {
+              if (!isWall(enemy.gridX - 1,enemy.gridY))
+                {
+                    enemy.gridX--;
+                    moved = true;
+                } 
+                else if (map[enemy.gridY][enemy.gridX - 1] == '*')
+                {
+                    enemy.breakingWall = true;
+
+                    enemy.breakX = enemy.gridX - 1;
+                    enemy.breakY = enemy.gridY;
+
+                    enemy.breakTimer.restart();
+                }
+                
+            }
+        else if (playerGridX > enemy.gridX)
+        {
+            if (!isWall(enemy.gridX + 1,enemy.gridY))
+                {
+                    enemy.gridX++;
+                    moved = true;
+                } 
+                else if (map[enemy.gridY][enemy.gridX + 1] == '*')
+                {
+                    enemy.breakingWall = true;
+
+                    enemy.breakX = enemy.gridX + 1;
+                    enemy.breakY = enemy.gridY;
+
+                    enemy.breakTimer.restart();
+                }  
+        }
+        if (!moved && !enemy.breakingWall)
+        {
+            if (playerGridY < enemy.gridY)
+            {
+              if (!isWall(enemy.gridX,enemy.gridY - 1))
+                {
+                    enemy.gridY--;
+                } 
+                else if (map[enemy.gridY - 1][enemy.gridX] == '*')
+                {
+                    enemy.breakingWall = true;
+
+                    enemy.breakX = enemy.gridX;
+                    enemy.breakY = enemy.gridY - 1;
+
+                    enemy.breakTimer.restart();
+                }
+                
+            }
+        else if (playerGridY > enemy.gridY)
+        {
+            if (!isWall(enemy.gridX,enemy.gridY + 1))
+                {
+                    enemy.gridY++;
+                } 
+                else if (map[enemy.gridY + 1][enemy.gridX] == '*')
+                {
+                    enemy.breakingWall = true;
+
+                    enemy.breakX = enemy.gridX;
+                    enemy.breakY = enemy.gridY + 1;
+
+                    enemy.breakTimer.restart();
+                }  
+        }
+        }
+        enemy.moveTimer.restart();
+         }
+       }
+     }
+     
+    
     player.setPosition({static_cast<float>(playerGridX*TILE_SIZE),static_cast<float>(playerGridY*TILE_SIZE)});
     window.clear(sf::Color::Black);
 
