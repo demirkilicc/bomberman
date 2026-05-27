@@ -2,23 +2,24 @@
 #include <optional>
 #include <vector>
 const int TILE_SIZE = 48;
-const int MAP_WIDTH = 20;
-const int MAP_HEIGHT = 12;
+const int MAP_WIDTH = 21;
+const int MAP_HEIGHT = 13;
 
 char map[MAP_HEIGHT][MAP_WIDTH+1] = 
 {
-"####################",
-"#........*.........#",
-"#.#.#.#.#.#.#.#.#..#",
-"#..*...........*...#",
-"#.#.#.#.#.#.#.#.#..#",
-"#.....*............#",
-"#.#.#.#.#.#.#.#.#..#",
-"#...*..........*...#",
-"#.#.#.#.#.#.#.#.#..#",
-"#..........*.......#",
-"#...............*..#",
-"####################"
+"#####################",
+"#...................#",
+"#.#*#.#.#.#*#.#.#.#.#",
+"#..*..*........*.*..#",
+"#.#*#.#*#.#.#.#.#.#.#",
+"#.....*...*.........#",
+"#.#.#.#.#.#.#*#.#.#.#",
+"#...*.....*....*....#",
+"#.#*#.#.#.#.#.#.#.#.#",
+"#..........*..*.....#",
+"#.#.#.#.#.#.#.#.#.#*#",
+"#...............***.#",
+"#####################"
 };
 bool isWall(int x,int y)
 {
@@ -43,6 +44,7 @@ struct Explosion
     sf::Clock timer;
 };
 
+
 struct Enemy
 {
     int gridX;
@@ -64,7 +66,27 @@ struct Enemy
      sf::Clock breakTimer;
 };
 
+bool isEnemyThere(int x, int y, const std::vector<Enemy>& enemies)
+{
+    for (const Enemy& enemy : enemies)
+    {
+       if (enemy.gridX == x && enemy.gridY == y)
+        {
+            return true;
+        }
+    }
+return false;
+}
 
+bool isBombThere(int x, int y, const std::vector<Bomb>& bombs)
+{
+    for (const Bomb& bomb : bombs)
+    {
+        if (bomb.gridX == x && bomb.gridY == y)
+            return true;
+    }
+    return false;
+}
 int main()
 {
     sf::RenderWindow window(sf::VideoMode({MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE}),
@@ -93,7 +115,7 @@ fox.direction = rand() % 4;
 enemies.push_back(fox);
 
 Enemy wolf;
-wolf.gridX = 10;
+wolf.gridX = 13;
 wolf.gridY = 8;
 wolf.type = 1;
 wolf.health = 2;
@@ -102,8 +124,8 @@ wolf.direction = rand() % 4;
 enemies.push_back(wolf);
 
 Enemy butcher;
-butcher.gridX = 15;
-butcher.gridY = 6;
+butcher.gridX = 19;
+butcher.gridY = 11;
 butcher.type = 2;
 butcher.health = 5;
 butcher.direction = rand() % 4;
@@ -152,7 +174,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
     { 
-        if (!isWall(playerGridX,playerGridY - 1))
+        if (!isWall(playerGridX,playerGridY - 1) &&
+    !isBombThere(playerGridX,playerGridY - 1,bombs))
         {
             playerGridY --;
         }
@@ -160,7 +183,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
     { 
-     if (!isWall(playerGridX,playerGridY + 1))
+     if (!isWall(playerGridX,playerGridY + 1) &&
+    !isBombThere(playerGridX,playerGridY + 1,bombs))
         {
             playerGridY ++;
         }
@@ -168,7 +192,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
     { 
-     if (!isWall(playerGridX - 1,playerGridY))
+     if (!isWall(playerGridX - 1,playerGridY) &&
+    !isBombThere(playerGridX - 1,playerGridY,bombs))
         {
             playerGridX --;
         }
@@ -176,7 +201,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
     { 
-      if (!isWall(playerGridX + 1, playerGridY))
+      if (!isWall(playerGridX + 1, playerGridY) &&
+    !isBombThere(playerGridX + 1,playerGridY,bombs))
         {
             playerGridX ++;
         }
@@ -196,38 +222,102 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
             bool moved = false;
             if (enemy.direction == 0)
             {
-                if (!isWall(enemy.gridX,enemy.gridY - 1))
-                {
-                    enemy.gridY--;
-                    moved = true;
-                }
+               if (playerGridX == enemy.gridX &&
+    playerGridY == enemy.gridY - 1)
+{
+    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+}
+else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
+!isBombThere(enemy.gridX,enemy.gridY - 1,bombs) &&
+         !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
+{
+    enemy.gridY--;
+    moved = true;
+}
                 
             }
              if (enemy.direction == 1)
             {
-                if (!isWall(enemy.gridX,enemy.gridY + 1))
-                {
-                    enemy.gridY++;
-                    moved = true;
-                }
+               if (playerGridX == enemy.gridX &&
+    playerGridY == enemy.gridY + 1)
+{
+    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+}
+else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
+!isBombThere(enemy.gridX,enemy.gridY + 1,bombs) &&
+         !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
+{
+    enemy.gridY++;
+    moved = true;
+}
                 
             }
             if (enemy.direction == 2)
             {
-                if (!isWall(enemy.gridX - 1,enemy.gridY))
-                {
-                    enemy.gridX--;
-                    moved = true;
-                }
+               if (playerGridX == enemy.gridX - 1 &&
+    playerGridY == enemy.gridY)
+{
+    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+}
+else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
+!isBombThere(enemy.gridX - 1,enemy.gridY,bombs) &&
+         !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
+{
+    enemy.gridX--;
+    moved = true;
+}
                 
             }
              if (enemy.direction == 3)
             {
-                if (!isWall(enemy.gridX + 1,enemy.gridY))
-                {
-                    enemy.gridX++;
-                    moved = true;
-                }
+                 if (playerGridX == enemy.gridX + 1 &&
+    playerGridY == enemy.gridY)
+{
+    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+}
+else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
+!isBombThere(enemy.gridX + 1,enemy.gridY,bombs) &&
+         !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
+{
+    enemy.gridX++;
+    moved = true;
+}
                 
             }
             if (!moved)
@@ -243,52 +333,97 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
         
        }
        //kurt
-       if (enemy.type == 1)
-       {
-        if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
-        {
-          int distanceX = abs(playerGridX - enemy.gridX);
-          int distanceY = abs(playerGridY - enemy.gridY);
+        if (enemy.type == 1)
+{
+    if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
+    {
+        int distanceX = abs(playerGridX - enemy.gridX);
+        int distanceY = abs(playerGridY - enemy.gridY);
 
-          if (distanceX + distanceY <= 5)
-          {
+        if (distanceX <= 4 && distanceY <= 4)
+        {
             bool moved = false;
-            
+
             if (playerGridX < enemy.gridX)
             {
-              if (!isWall(enemy.gridX - 1,enemy.gridY))
+            if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
+                {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                    {
+                        playerHealth--;
+                        damageClock.restart();
+                        if (playerHealth <= 0) window.close();
+                    }
+                }
+                else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
+!isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
                 {
                     enemy.gridX--;
                     moved = true;
-                } 
+                }
             }
             else if (playerGridX > enemy.gridX)
             {
-                if (!isWall(enemy.gridX + 1,enemy.gridY))
+                if (playerGridX == enemy.gridX + 1 && playerGridY == enemy.gridY)
+                {
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                    {
+                        playerHealth--;
+                        damageClock.restart();
+                        if (playerHealth <= 0) window.close();
+                    }
+                }
+                else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
+!isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
                 {
                     enemy.gridX++;
                     moved = true;
                 }
             }
 
-             if (!moved)
+        
+            if (!moved)
             {
-                if (playerGridY < enemy.gridY && !isWall(enemy.gridX,enemy.gridY - 1))
-                {
-                    enemy.gridY--;
-                    moved = true;
-                } 
-                 else if (playerGridY > enemy.gridY && !isWall(enemy.gridX,enemy.gridY + 1))
-                {
-                    enemy.gridY++;
-                    moved = true;
-                }
-            }
-          }
-          else 
-          {
-            bool moved = false;
 
+             if (playerGridY < enemy.gridY)
+            {
+                 if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
+                    {
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                        {
+                            playerHealth--;
+                            damageClock.restart();
+                            if (playerHealth <= 0) window.close();
+                        }
+                    }
+                    else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
+!isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
+                    {
+                        enemy.gridY--;
+                    }
+                }
+                else if (playerGridY > enemy.gridY)
+                {
+                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1)
+                    {
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                        {
+                            playerHealth--;
+                            damageClock.restart();
+                            if (playerHealth <= 0) window.close();
+                        }
+                    }
+                    else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
+!isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
+                    {
+                        enemy.gridY++;
+                    }
+             }
+         }
+        }
+        else 
+        {
+            bool moved = false;
             int nextX = enemy.gridX;
             int nextY = enemy.gridY;
 
@@ -296,111 +431,186 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
             else if (enemy.direction == 1) nextY++;
             else if (enemy.direction == 2) nextX--;
             else if (enemy.direction == 3) nextX++;
-            if (!isWall(nextX, nextY))
+
+    
+            if (playerGridX == nextX && playerGridY == nextY)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies))
             {
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
                 moved = true;
             }
-            
-            if (!moved || rand() %10 == 0)
-            {
-                enemy.direction = rand() %4;
-            }
 
+            if (!moved || rand() % 10 == 0)
+            {
+                enemy.direction = rand() % 4;
+            }
         }
         enemy.moveTimer.restart();
-       }
-     }
+    }
+}
      //kasap
      if (enemy.type == 2)
-     {
-       if (enemy.breakingWall)
-       {
+{
+    if (enemy.breakingWall)
+    {
         if (enemy.breakTimer.getElapsedTime().asSeconds() > 1.0f)
         {
-         map[enemy.breakY][enemy.breakX] = '.';
-
-         enemy.breakingWall = false;
-         }
-       }
-       else if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.7f)
-       {
+            map[enemy.breakY][enemy.breakX] = '.';
+            enemy.breakingWall = false;
+        }
+    }
+    else if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.7f)
+    {
         bool moved = false;
-         if (playerGridX < enemy.gridX)
+
+        if (playerGridX < enemy.gridX)
+        {
+            if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
             {
-              if (!isWall(enemy.gridX - 1,enemy.gridY))
+            if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                 {
-                    enemy.gridX--;
-                    moved = true;
-                } 
-                else if (map[enemy.gridY][enemy.gridX - 1] == '*')
-                {
-                    enemy.breakingWall = true;
-
-                    enemy.breakX = enemy.gridX - 1;
-                    enemy.breakY = enemy.gridY;
-
-                    enemy.breakTimer.restart();
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
                 }
-                
-            }
+             }
+            else if (!isWall(enemy.gridX - 1, enemy.gridY) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
+            {
+                enemy.gridX--;
+                moved = true;
+             } 
+            else if (map[enemy.gridY][enemy.gridX - 1] == '*')
+            {
+             enemy.breakingWall = true;
+            enemy.breakX = enemy.gridX - 1;
+            enemy.breakY = enemy.gridY;
+             enemy.breakTimer.restart();
+              }
+        }
         else if (playerGridX > enemy.gridX)
         {
-            if (!isWall(enemy.gridX + 1,enemy.gridY))
+            if (playerGridX == enemy.gridX + 1 && playerGridY == enemy.gridY)
+           {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                 {
-                    enemy.gridX++;
-                    moved = true;
-                } 
-                else if (map[enemy.gridY][enemy.gridX + 1] == '*')
-                {
-                    enemy.breakingWall = true;
-
-                    enemy.breakX = enemy.gridX + 1;
-                    enemy.breakY = enemy.gridY;
-
-                    enemy.breakTimer.restart();
-                }  
+                playerHealth--;
+                damageClock.restart();
+                if (playerHealth <= 0) window.close();
+                }
+             }
+            else if (!isWall(enemy.gridX + 1, enemy.gridY) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
+             {
+            enemy.gridX++;
+             moved = true;
+              } 
+            else if (map[enemy.gridY][enemy.gridX + 1] == '*')
+            {
+              enemy.breakingWall = true;
+             enemy.breakX = enemy.gridX + 1;
+            enemy.breakY = enemy.gridY;
+            enemy.breakTimer.restart();
+            }  
         }
         if (!moved && !enemy.breakingWall)
         {
             if (playerGridY < enemy.gridY)
             {
-              if (!isWall(enemy.gridX,enemy.gridY - 1))
+            if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
+               {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                    {
+                        playerHealth--;
+                        damageClock.restart();
+                        if (playerHealth <= 0) window.close();
+                    }
+                }
+                else if (!isWall(enemy.gridX, enemy.gridY - 1) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
                 {
                     enemy.gridY--;
+                    moved = true;
                 } 
                 else if (map[enemy.gridY - 1][enemy.gridX] == '*')
                 {
-                    enemy.breakingWall = true;
-
-                    enemy.breakX = enemy.gridX;
-                    enemy.breakY = enemy.gridY - 1;
-
-                    enemy.breakTimer.restart();
+                enemy.breakingWall = true;
+                enemy.breakX = enemy.gridX;
+                enemy.breakY = enemy.gridY - 1;
+                enemy.breakTimer.restart();
                 }
-                
             }
-        else if (playerGridY > enemy.gridY)
-        {
-            if (!isWall(enemy.gridX,enemy.gridY + 1))
+            else if (playerGridY > enemy.gridY)
+            {
+                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1) 
+                {
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                    {
+                        playerHealth--;
+                        damageClock.restart();
+                        if (playerHealth <= 0) window.close();
+                    }
+                }
+                else if (!isWall(enemy.gridX, enemy.gridY + 1) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
                 {
                     enemy.gridY++;
+                    moved = true;
                 } 
                 else if (map[enemy.gridY + 1][enemy.gridX] == '*')
                 {
-                    enemy.breakingWall = true;
-
-                    enemy.breakX = enemy.gridX;
-                    enemy.breakY = enemy.gridY + 1;
-
-                    enemy.breakTimer.restart();
-                }  
+                enemy.breakingWall = true;
+                enemy.breakX = enemy.gridX;
+                enemy.breakY = enemy.gridY + 1;
+                enemy.breakTimer.restart();
+             }  
+          }
         }
+        if (!moved && !enemy.breakingWall) 
+        {
+            int nextX = enemy.gridX;
+            int nextY = enemy.gridY;
+
+            if (enemy.direction == 0) nextY--;
+            else if (enemy.direction == 1) nextY++;
+            else if (enemy.direction == 2) nextX--;
+            else if (enemy.direction == 3) nextX++;
+
+            if (playerGridX == nextX && playerGridY == nextY)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies))
+            {
+                enemy.gridX = nextX;
+                enemy.gridY = nextY;
+                moved = true;
+            }
+            else if (map[nextY][nextX] == '*')
+            {
+                enemy.breakingWall = true;
+                enemy.breakX = nextX;
+                enemy.breakY = nextY;
+                enemy.breakTimer.restart();
+            }
+            else
+            {
+                enemy.direction = rand() % 4;
+            }
         }
         enemy.moveTimer.restart();
-         }
-       }
+    }
+}
      }
      
     
@@ -474,7 +684,17 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        //orta
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY)
+       { if (damageClock.getElapsedTime().asSeconds() > 1.0f)
        {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+       {
+        window.close();
+       }
+       }
+       
         if (playerHealth <= 0)
        {
         window.close();
@@ -484,6 +704,17 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY - 1)
        {
+        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+       {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+       {
+        window.close();
+       }
+       }
+       
         if (playerHealth <= 0)
        {
         window.close();
@@ -493,6 +724,17 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY + 1)
        {
+        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+       {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+       {
+        window.close();
+       }
+       }
+       
         if (playerHealth <= 0)
        {
         window.close();
@@ -502,6 +744,17 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        if (playerGridX == explosion.gridX - 1 &&
     playerGridY == explosion.gridY)
        {
+        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+       {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+       {
+        window.close();
+       }
+       }
+       
         if (playerHealth <= 0)
        {
         window.close();
@@ -511,6 +764,17 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        if (playerGridX == explosion.gridX + 1 &&
     playerGridY == explosion.gridY)
        {
+       if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+       {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+       {
+        window.close();
+       }
+       }
+       
         if (playerHealth <= 0)
        {
         window.close();
@@ -675,20 +939,7 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
    }
    for (const Enemy& enemy : enemies)
    {
-    if (enemy.gridX == playerGridX &&
-    enemy.gridY == playerGridY)
-{
-    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-    {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-        {
-            window.close();
-        }
-    }
-}
+  
     sf::RectangleShape enemyShape({
         static_cast<float>(TILE_SIZE),
         static_cast<float>(TILE_SIZE)});
