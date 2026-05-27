@@ -50,6 +50,7 @@ struct Enemy
 
     int type;
     int health;
+ bool damaged = false;
 
      int direction;
 
@@ -72,6 +73,7 @@ window.setFramerateLimit(60);
 
 int playerGridX = 1;
 int playerGridY = 1;
+int playerHealth = 3;
 
 sf::RectangleShape player({static_cast<float>(TILE_SIZE),static_cast<float>(TILE_SIZE)});
 player.setFillColor(sf::Color::Cyan);
@@ -80,6 +82,7 @@ std::vector<Bomb> bombs;
 std::vector<Explosion> explosions;
 std::vector<Enemy> enemies;
 sf::Clock moveClock;
+sf::Clock damageClock;
 bool spacePressed = false;
 Enemy fox;
 fox.gridX = 5;
@@ -457,6 +460,10 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
      {
        if (explosions[i].timer.getElapsedTime().asSeconds() > 0.5f)
        {
+        for (Enemy& enemy : enemies)
+    {
+        enemy.damaged = false;
+    }
         explosions.erase(explosions.begin() + i);
         i--;
        }
@@ -468,31 +475,46 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY)
        {
+        if (playerHealth <= 0)
+       {
         window.close();
+       }
        }
         //üst
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY - 1)
        {
+        if (playerHealth <= 0)
+       {
         window.close();
+       }
        }
            //alt
        if (playerGridX == explosion.gridX &&
     playerGridY == explosion.gridY + 1)
        {
+        if (playerHealth <= 0)
+       {
         window.close();
+       }
        }
            //sol
        if (playerGridX == explosion.gridX - 1 &&
     playerGridY == explosion.gridY)
        {
+        if (playerHealth <= 0)
+       {
         window.close();
+       }
        }
              //sag
        if (playerGridX == explosion.gridX + 1 &&
     playerGridY == explosion.gridY)
        {
+        if (playerHealth <= 0)
+       {
         window.close();
+       }
        }
 
     }
@@ -556,6 +578,44 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
      
     for (const Explosion& explosion : explosions)
     {
+        for (Enemy& enemy : enemies)
+{
+    if (!enemy.damaged)
+    {
+        bool hit = false;
+
+        if (enemy.gridX == explosion.gridX && enemy.gridY == explosion.gridY)
+        {
+            hit = true;
+        }
+        // üst
+        if (enemy.gridX == explosion.gridX && enemy.gridY == explosion.gridY - 1)
+        {
+            hit = true;
+        }
+        // alt
+        if (enemy.gridX == explosion.gridX &&
+            enemy.gridY == explosion.gridY + 1)
+        {
+            hit = true;
+        }
+        // sol
+        if (enemy.gridX == explosion.gridX - 1 && enemy.gridY == explosion.gridY)
+        {
+            hit = true;
+        }
+        // sag
+        if (enemy.gridX == explosion.gridX + 1 && enemy.gridY == explosion.gridY)
+        {
+           hit = true;
+        }
+  if (hit)
+     {
+    enemy.health--;
+     enemy.damaged = true;
+     }
+    }
+}
         sf::RectangleShape center({static_cast<float>(TILE_SIZE),
     static_cast<float>(TILE_SIZE)});
         center.setFillColor(sf::Color::Yellow);
@@ -615,6 +675,20 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
    }
    for (const Enemy& enemy : enemies)
    {
+    if (enemy.gridX == playerGridX &&
+    enemy.gridY == playerGridY)
+{
+    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+}
     sf::RectangleShape enemyShape({
         static_cast<float>(TILE_SIZE),
         static_cast<float>(TILE_SIZE)});
@@ -639,6 +713,14 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     });
 window.draw(enemyShape);
     }
+    for (int i = 0; i < enemies.size(); i++)
+{
+    if (enemies[i].health <= 0)
+    {
+        enemies.erase(enemies.begin() + i);
+        i--;
+    }
+}
  window.draw(player);
     window.display();
 } 
