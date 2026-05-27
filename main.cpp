@@ -44,6 +44,13 @@ struct Explosion
     sf::Clock timer;
 };
 
+struct PowerUp
+{
+    int gridX;
+    int gridY;
+
+    int type;
+};
 
 struct Enemy
 {
@@ -96,12 +103,17 @@ window.setFramerateLimit(60);
 int playerGridX = 1;
 int playerGridY = 1;
 int playerHealth = 3;
+int bombRange = 1;
+int maxBombs = 1;
+
+float moveDelay = 0.15f;
 
 sf::RectangleShape player({static_cast<float>(TILE_SIZE),static_cast<float>(TILE_SIZE)});
 player.setFillColor(sf::Color::Cyan);
 std::vector<Bomb> bombs;
 
 std::vector<Explosion> explosions;
+std::vector<PowerUp> powerUps;
 std::vector<Enemy> enemies;
 sf::Clock moveClock;
 sf::Clock damageClock;
@@ -153,7 +165,7 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
 
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
     {
-     if (!spacePressed)
+     if (!spacePressed && bombs.size() < maxBombs)
      {
          Bomb bomb;
 
@@ -170,7 +182,7 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
         spacePressed = false;
     }
     
-    if (moveClock.getElapsedTime().asSeconds() > 0.15f)
+    if (moveClock.getElapsedTime().asSeconds() > moveDelay)
     {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
     { 
@@ -613,6 +625,36 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
 }
      }
      
+     for (int i = 0; i < powerUps.size(); i++)
+{
+    if (playerGridX == powerUps[i].gridX &&
+        playerGridY == powerUps[i].gridY)
+    {
+        if (powerUps[i].type == 0)
+        {
+            bombRange++;
+        }
+
+        if (powerUps[i].type == 1)
+        {
+            maxBombs++;
+        }
+
+        if (powerUps[i].type == 2)
+{
+    moveDelay -= 0.02f;
+
+    if (moveDelay < 0.05f)
+    {
+        moveDelay = 0.05f;
+    }
+}
+
+        powerUps.erase(powerUps.begin() + i);
+
+        i--;
+    }
+}
     
     player.setPosition({static_cast<float>(playerGridX*TILE_SIZE),static_cast<float>(playerGridY*TILE_SIZE)});
     window.clear(sf::Color::Black);
@@ -680,165 +722,234 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
        
      }
      for (const Explosion& explosion : explosions)
-     {
-       //orta
-       if (playerGridX == explosion.gridX &&
-    playerGridY == explosion.gridY)
-       { if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-       {
-        playerHealth--;
-        damageClock.restart();
+{
+    bool hitPlayer = false;
 
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-       
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-        //üst
-       if (playerGridX == explosion.gridX &&
-    playerGridY == explosion.gridY - 1)
-       {
-        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-       {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-       
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-           //alt
-       if (playerGridX == explosion.gridX &&
-    playerGridY == explosion.gridY + 1)
-       {
-        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-       {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-       
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-           //sol
-       if (playerGridX == explosion.gridX - 1 &&
-    playerGridY == explosion.gridY)
-       {
-        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-       {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-       
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-             //sag
-       if (playerGridX == explosion.gridX + 1 &&
-    playerGridY == explosion.gridY)
-       {
-       if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-       {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-       
-        if (playerHealth <= 0)
-       {
-        window.close();
-       }
-       }
-
+    if (playerGridX == explosion.gridX &&
+        playerGridY == explosion.gridY)
+    {
+        hitPlayer = true;
     }
+
+    // yukarı
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int y = explosion.gridY - i;
+
+        if (map[y][explosion.gridX] == '#')
+            break;
+
+        if (playerGridX == explosion.gridX &&
+            playerGridY == y)
+        {
+            hitPlayer = true;
+        }
+
+        if (map[y][explosion.gridX] == '*')
+            break;
+    }
+
+    // aşağı
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int y = explosion.gridY + i;
+
+        if (map[y][explosion.gridX] == '#')
+            break;
+
+        if (playerGridX == explosion.gridX &&
+            playerGridY == y)
+        {
+            hitPlayer = true;
+        }
+
+        if (map[y][explosion.gridX] == '*')
+            break;
+    }
+
+    // sol
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int x = explosion.gridX - i;
+
+        if (map[explosion.gridY][x] == '#')
+            break;
+
+        if (playerGridX == x &&
+            playerGridY == explosion.gridY)
+        {
+            hitPlayer = true;
+        }
+
+        if (map[explosion.gridY][x] == '*')
+            break;
+    }
+
+    // sağ
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int x = explosion.gridX + i;
+
+        if (map[explosion.gridY][x] == '#')
+            break;
+
+        if (playerGridX == x &&
+            playerGridY == explosion.gridY)
+        {
+            hitPlayer = true;
+        }
+
+        if (map[explosion.gridY][x] == '*')
+            break;
+    }
+
+    if (hitPlayer)
+    {
+       if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    {
+        playerHealth--;
+
+        damageClock.restart();
+
+        if (playerHealth <= 0)
+        {
+            window.close();
+        }
+    }
+    }
+}
      
-     for (const Explosion& explosion : explosions)
-     {
-        int gridX = explosion.gridX;
-        int gridY = explosion.gridY;
-        //orta
+    for (const Explosion& explosion : explosions)
+{
+    int gridX = explosion.gridX;
+    int gridY = explosion.gridY;
 
-        if (map[gridY][gridX] == '*')
+    if (map[gridY][gridX] == '*')
+    {
+        map[gridY][gridX] = '.';
+    }
+
+    // yukarı
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int y = gridY - i;
+
+        if (map[y][gridX] == '#')
+            break;
+
+        if (map[y][gridX] == '*')
         {
-            map[gridY][gridX] = '.';
+            map[y][gridX] = '.';
+             if (rand() % 100 < 35)
+    {
+        PowerUp p;
+
+        p.gridX = gridX;
+        p.gridY = y;
+
+        int chance = rand() % 100;
+        if (chance < 25)
+       {
+          p.type = 0;
+       }
+       else if (chance < 60)
+       {
+        p.type = 1;
         }
+     else
+      {
+        p.type = 2;
+       }
 
-         //yukarı
-
-        if (map[gridY - 1][gridX] == '*')
-        {
-            map[gridY - 1][gridX] = '.';
+        powerUps.push_back(p);
+    }
+            break;
         }
-        else if (map[gridY - 1][gridX] == '#')
+    }
+
+    // aşağı
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int y = gridY + i;
+
+        if (map[y][gridX] == '#')
+            break;
+
+        if (map[y][gridX] == '*')
         {
+            map[y][gridX] = '.';
+             if (rand() % 100 < 35)
+    {
+        PowerUp p;
+
+        p.gridX = gridX;
+        p.gridY = y;
+
+        p.type = rand() % 2;
+
+        powerUps.push_back(p);
+    }
+            break;
+        }
+    }
+
+    // sol
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int x = gridX - i;
+
+        if (map[gridY][x] == '#')
+            break;
+
+        if (map[gridY][x] == '*')
+        {
+            map[gridY][x] = '.';
+
+            if (rand() % 100 < 35)
+    {
+        PowerUp p;
+
+        p.gridX = x;
+        p.gridY = gridY;
+
+        p.type = rand() % 2;
+
+        powerUps.push_back(p);
+    }
+
             
+            break;
         }
-        
-        //alt
+    }
 
-        if (map[gridY + 1][gridX] == '*')
-        {
-            map[gridY + 1][gridX] = '.';
-        }
-        else if (map[gridY + 1][gridX] == '#')
-        {
-        
-        }
-        
-        //sol
+    // sağ
+    for (int i = 1; i <= bombRange; i++)
+    {
+        int x = gridX + i;
 
-        if (map[gridY][gridX - 1] == '*')
-        {
-            map[gridY][gridX - 1] = '.';
-        }
-         else if (map[gridY][gridX - 1] == '#')
-        {
-        
-        }
+        if (map[gridY][x] == '#')
+            break;
 
-        //sag
+        if (map[gridY][x] == '*')
+        {
+            map[gridY][x] = '.';
 
-        if (map[gridY][gridX + 1] == '*')
-        {
-            map[gridY][gridX + 1] = '.';
+            if (rand() % 100 < 35)
+    {
+        PowerUp p;
+
+        p.gridX = x;
+        p.gridY = gridY;
+
+        p.type = rand() % 2;
+
+        powerUps.push_back(p);
+    }
+
+            break;
         }
-         else if (map[gridY][gridX + 1] == '#')
-        {
-        
-        }
-        
-     }
+    }
+}
      
     for (const Explosion& explosion : explosions)
     {
@@ -888,53 +999,124 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
         });
         window.draw(center);
         //yukarı
-        if (map[explosion.gridY - 1][explosion.gridX] != '#'
-        && map[explosion.gridY - 1][explosion.gridX] != '*')
-        {
-          sf::RectangleShape up({static_cast<float>(TILE_SIZE),
-    static_cast<float>(TILE_SIZE)});
-        up.setFillColor(sf::Color::Yellow);
-        up.setPosition({
-            static_cast<float>(explosion.gridX * TILE_SIZE),static_cast<float>(explosion.gridY * TILE_SIZE - TILE_SIZE)
-        });
-        window.draw(up);
+        for (int i = 1; i <= bombRange; i++)
+{
+    int y = explosion.gridY - i;
+
+    if (map[y][explosion.gridX] == '#')
+    {
+        break;
     }
+
+    sf::RectangleShape up({
+        static_cast<float>(TILE_SIZE),
+        static_cast<float>(TILE_SIZE)
+    });
+
+    up.setFillColor(sf::Color::Yellow);
+
+    up.setPosition({
+        static_cast<float>(explosion.gridX * TILE_SIZE),
+        static_cast<float>(y * TILE_SIZE)
+    });
+
+    window.draw(up);
+
+    if (map[y][explosion.gridX] == '*')
+    {
+        break;
+    }
+}
         //aşağı
-         if (map[explosion.gridY + 1][explosion.gridX] != '#')
-        {
-            sf::RectangleShape down({static_cast<float>(TILE_SIZE),
-    static_cast<float>(TILE_SIZE)});
-        down.setFillColor(sf::Color::Yellow);
-        down.setPosition({
-            static_cast<float>(explosion.gridX * TILE_SIZE),static_cast<float>(explosion.gridY * TILE_SIZE + TILE_SIZE)
-        });
-        window.draw(down);
+        for (int i = 1; i <= bombRange; i++)
+{
+    int y = explosion.gridY + i;
+
+    if (map[y][explosion.gridX] == '#')
+    {
+        break;
     }
+
+    sf::RectangleShape down({
+        static_cast<float>(TILE_SIZE),
+        static_cast<float>(TILE_SIZE)
+    });
+
+    down.setFillColor(sf::Color::Yellow);
+
+    down.setPosition({
+        static_cast<float>(explosion.gridX * TILE_SIZE),
+        static_cast<float>(y * TILE_SIZE)
+    });
+
+    window.draw(down);
+
+    if (map[y][explosion.gridX] == '*')
+    {
+        break;
+    }
+}
+        
          //sol
-          if (map[explosion.gridY][explosion.gridX - 1] != '#')
-        {
-          sf::RectangleShape left({static_cast<float>(TILE_SIZE),
-    static_cast<float>(TILE_SIZE)});
-        left.setFillColor(sf::Color::Yellow);
-        left.setPosition({
-            static_cast<float>(explosion.gridX * TILE_SIZE - TILE_SIZE), 
-            static_cast<float>(explosion.gridY * TILE_SIZE)
-        });
-        window.draw(left);
+         for (int i = 1; i <= bombRange; i++)
+{
+    int x = explosion.gridX - i;
+
+    if (map[explosion.gridY][x] == '#')
+    {
+        break;
     }
+
+    sf::RectangleShape left({
+        static_cast<float>(TILE_SIZE),
+        static_cast<float>(TILE_SIZE)
+    });
+
+    left.setFillColor(sf::Color::Yellow);
+
+    left.setPosition({
+        static_cast<float>(x * TILE_SIZE),
+        static_cast<float>(explosion.gridY * TILE_SIZE)
+    });
+
+    window.draw(left);
+
+    if (map[explosion.gridY][x] == '*')
+    {
+        break;
+    }
+}
+       
              //sag
-    if (map[explosion.gridY][explosion.gridX + 1] != '#')
-        {  
-          sf::RectangleShape right({static_cast<float>(TILE_SIZE),
-    static_cast<float>(TILE_SIZE)});
+             for (int i = 1; i <= bombRange; i++)
+{
+    int x = explosion.gridX + i;
 
-        right.setFillColor(sf::Color::Yellow);
-
-        right.setPosition({
-            static_cast<float>(explosion.gridX * TILE_SIZE + TILE_SIZE),static_cast<float>(explosion.gridY * TILE_SIZE)
-        });
-        window.draw(right);
+    if (map[explosion.gridY][x] == '#')
+    {
+        break;
     }
+
+    sf::RectangleShape right({
+        static_cast<float>(TILE_SIZE),
+        static_cast<float>(TILE_SIZE)
+    });
+
+    right.setFillColor(sf::Color::Yellow);
+
+    right.setPosition({
+        static_cast<float>(x * TILE_SIZE),
+        static_cast<float>(explosion.gridY * TILE_SIZE)
+    });
+
+    window.draw(right);
+
+    if (map[explosion.gridY][x] == '*')
+    {
+        break;
+    }
+}
+    
     
    }
    for (const Enemy& enemy : enemies)
@@ -972,6 +1154,34 @@ window.draw(enemyShape);
         i--;
     }
 }
+
+for (const PowerUp& p : powerUps)
+{
+    sf::CircleShape shape(12.f);
+
+    if (p.type == 0)
+    {
+        shape.setFillColor(sf::Color::Red);
+    }
+
+    if (p.type == 1)
+    {
+        shape.setFillColor(sf::Color::Green);
+    }
+    
+    if (p.type == 2)
+{
+    shape.setFillColor(sf::Color::Blue);
+}
+
+    shape.setPosition({
+        static_cast<float>(p.gridX * TILE_SIZE + 12),
+        static_cast<float>(p.gridY * TILE_SIZE + 12)
+    });
+
+    window.draw(shape);
+}
+
  window.draw(player);
     window.display();
 } 
