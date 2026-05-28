@@ -100,16 +100,67 @@ int main()
 "Bomberman");
 window.setFramerateLimit(60);
 
+sf::Texture playerTexture;
+
+if (!playerTexture.loadFromFile("assets/chicken.png"))
+{
+    return -1;
+}
+
+playerTexture.setSmooth(false);
+
+sf::Sprite playerSprite(playerTexture);
+
+ sf::Texture grassTexture;
+
+if (!grassTexture.loadFromFile("assets/grass.jpg"))
+{
+    return -1;
+}
+
+sf::Sprite grassSprite(grassTexture);
+
+sf::Texture hayTexture;
+
+if (!hayTexture.loadFromFile("assets/hay.png"))
+{
+    return -1;
+}
+
+sf::Sprite haySprite(hayTexture);
+
+haySprite.setScale({
+    TILE_SIZE / static_cast<float>(hayTexture.getSize().x),
+    TILE_SIZE / static_cast<float>(hayTexture.getSize().y)
+});
+
+sf::Texture logTexture;
+
+if (!logTexture.loadFromFile("assets/log.png"))
+{
+    return -1;
+}
+
+sf::Sprite logSprite(logTexture);
+
+
 int playerGridX = 1;
 int playerGridY = 1;
+const int FRAME_WIDTH = 48;
+const int FRAME_HEIGHT = 48;
+
+int currentFrame = 1;
+int currentDirection = 0;
+
+sf::Clock animationClock;
+
 int playerHealth = 3;
 int bombRange = 1;
 int maxBombs = 1;
 
 float moveDelay = 0.15f;
 
-sf::RectangleShape player({static_cast<float>(TILE_SIZE),static_cast<float>(TILE_SIZE)});
-player.setFillColor(sf::Color::Cyan);
+
 std::vector<Bomb> bombs;
 
 std::vector<Explosion> explosions;
@@ -147,6 +198,7 @@ enemies.push_back(butcher);
 
 while (window.isOpen())
 {
+    bool moving = false;
     while (const std::optional event =  window.pollEvent())
  {
     if (event->is<sf::Event::Closed>())
@@ -189,6 +241,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
         if (!isWall(playerGridX,playerGridY - 1) &&
     !isBombThere(playerGridX,playerGridY - 1,bombs))
         {
+            currentDirection = 3;
+              moving = true;
             playerGridY --;
         }
         moveClock.restart();
@@ -198,6 +252,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
      if (!isWall(playerGridX,playerGridY + 1) &&
     !isBombThere(playerGridX,playerGridY + 1,bombs))
         {
+            currentDirection = 0;
+            moving = true;
             playerGridY ++;
         }
          moveClock.restart();
@@ -207,6 +263,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
      if (!isWall(playerGridX - 1,playerGridY) &&
     !isBombThere(playerGridX - 1,playerGridY,bombs))
         {
+            currentDirection = 1;
+            moving = true;
             playerGridX --;
         }
          moveClock.restart();
@@ -216,6 +274,8 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
       if (!isWall(playerGridX + 1, playerGridY) &&
     !isBombThere(playerGridX + 1,playerGridY,bombs))
         {
+            currentDirection = 2;
+             moving = true;
             playerGridX ++;
         }
          moveClock.restart();
@@ -624,6 +684,27 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
     }
 }
      }
+
+
+     // Oyuncu düşmana çarptı mı?
+for (Enemy& enemy : enemies)
+{
+    if (playerGridX == enemy.gridX && playerGridY == enemy.gridY)
+    {
+        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+        {
+            playerHealth--;
+            damageClock.restart();
+
+            if (playerHealth <= 0)
+                window.close();
+        }
+    }
+}
+
+
+
+
      
      for (int i = 0; i < powerUps.size(); i++)
 {
@@ -656,7 +737,36 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
     }
 }
     
-    player.setPosition({static_cast<float>(playerGridX*TILE_SIZE),static_cast<float>(playerGridY*TILE_SIZE)});
+if (moving)
+{
+    if (animationClock.getElapsedTime().asSeconds() > 0.15f)
+    {
+        currentFrame++;
+
+        if (currentFrame > 2)
+        {
+            currentFrame = 0;
+        }
+
+        animationClock.restart();
+    }
+}
+else
+{
+    currentFrame = 1;
+}
+
+playerSprite.setTextureRect(sf::IntRect(
+    {currentFrame * FRAME_WIDTH,
+    currentDirection * FRAME_HEIGHT},
+    {FRAME_WIDTH, FRAME_HEIGHT}
+));
+
+playerSprite.setPosition({
+    static_cast<float>(playerGridX * TILE_SIZE),
+    static_cast<float>(playerGridY * TILE_SIZE)
+});
+    
     window.clear(sf::Color::Black);
 
     for (int y=0; y < MAP_HEIGHT;y++)
@@ -672,17 +782,37 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
     });
     if (map[y][x] == '#')
     {
-       tile.setFillColor(sf::Color::Magenta);
+        logSprite.setPosition({
+        static_cast<float>(x * TILE_SIZE),
+        static_cast<float>(y * TILE_SIZE)
+    });
+
+    logSprite.setScale({
+        static_cast<float>(TILE_SIZE) / logTexture.getSize().x,
+        static_cast<float>(TILE_SIZE) / logTexture.getSize().y
+    });
+
+    window.draw(logSprite);
+
     }
     else if (map[y][x] == '*')
     {
-       tile.setFillColor(sf::Color::Blue);
+        haySprite.setPosition({
+        static_cast<float>(x * TILE_SIZE),
+        static_cast<float>(y * TILE_SIZE)
+    });
+
+    window.draw(haySprite);
     }
     else
     {
-        tile.setFillColor(sf::Color::White);
+        grassSprite.setPosition({
+        static_cast<float>(x * TILE_SIZE),
+        static_cast<float>(y * TILE_SIZE)
+    });
+
+    window.draw(grassSprite);
     }
-    window.draw(tile);
     }
 }
    for (int i = 0; i < bombs.size(); i++)
@@ -853,7 +983,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
           p.type = 0;
        }
        else if (chance < 60)
-       {
+     {
         p.type = 1;
         }
      else
@@ -1182,7 +1312,7 @@ for (const PowerUp& p : powerUps)
     window.draw(shape);
 }
 
- window.draw(player);
+ window.draw(playerSprite);
     window.display();
 } 
 
