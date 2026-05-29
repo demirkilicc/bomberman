@@ -73,16 +73,22 @@ struct Enemy
      sf::Clock breakTimer;
 };
 
-bool isEnemyThere(int x, int y, const std::vector<Enemy>& enemies)
+bool isEnemyThere(int x, int y, const std::vector<Enemy>& enemies, const Enemy* self = nullptr)
 {
     for (const Enemy& enemy : enemies)
     {
-       if (enemy.gridX == x && enemy.gridY == y)
+        if (&enemy == self)
+        {
+            continue;
+        }
+
+        if (enemy.gridX == x && enemy.gridY == y)
         {
             return true;
         }
     }
-return false;
+
+    return false;
 }
 
 bool isBombThere(int x, int y, const std::vector<Bomb>& bombs)
@@ -310,7 +316,7 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
 }
 else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
 !isBombThere(enemy.gridX,enemy.gridY - 1,bombs) &&
-         !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
+         !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
 {
     enemy.gridY--;
     moved = true;
@@ -335,7 +341,7 @@ else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
 }
 else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
 !isBombThere(enemy.gridX,enemy.gridY + 1,bombs) &&
-         !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
+         !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
 {
     enemy.gridY++;
     moved = true;
@@ -360,7 +366,7 @@ else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
 }
 else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
 !isBombThere(enemy.gridX - 1,enemy.gridY,bombs) &&
-         !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
+         !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
 {
     enemy.gridX--;
     moved = true;
@@ -385,7 +391,7 @@ else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
 }
 else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
 !isBombThere(enemy.gridX + 1,enemy.gridY,bombs) &&
-         !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
+         !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
 {
     enemy.gridX++;
     moved = true;
@@ -428,7 +434,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     }
                 }
                 else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
-!isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
+!isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
                 {
                     enemy.gridX--;
                     moved = true;
@@ -446,7 +452,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     }
                 }
                 else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
-!isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
+!isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
                 {
                     enemy.gridX++;
                     moved = true;
@@ -469,7 +475,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                         }
                     }
                     else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
-!isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
+!isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
                     {
                         enemy.gridY--;
                     }
@@ -486,7 +492,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                         }
                     }
                     else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
-!isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
+!isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
                     {
                         enemy.gridY++;
                     }
@@ -514,7 +520,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies))
+            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies, &enemy))
             {
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
@@ -555,7 +561,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     if (playerHealth <= 0) window.close();
                 }
              }
-            else if (!isWall(enemy.gridX - 1, enemy.gridY) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies))
+            else if (!isWall(enemy.gridX - 1, enemy.gridY) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
             {
                 enemy.gridX--;
                 moved = true;
@@ -579,7 +585,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                 if (playerHealth <= 0) window.close();
                 }
              }
-            else if (!isWall(enemy.gridX + 1, enemy.gridY) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies))
+            else if (!isWall(enemy.gridX + 1, enemy.gridY) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
              {
             enemy.gridX++;
              moved = true;
@@ -605,7 +611,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX, enemy.gridY - 1) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies))
+                else if (!isWall(enemy.gridX, enemy.gridY - 1) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
                 {
                     enemy.gridY--;
                     moved = true;
@@ -629,7 +635,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX, enemy.gridY + 1) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies))
+                else if (!isWall(enemy.gridX, enemy.gridY + 1) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
                 {
                     enemy.gridY++;
                     moved = true;
@@ -662,7 +668,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies))
+            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies, &enemy))
             {
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
@@ -1079,48 +1085,103 @@ playerSprite.setPosition({
             break;
         }
     }
-}
-     
+
     for (const Explosion& explosion : explosions)
-    {
-        for (Enemy& enemy : enemies)
 {
-    if (!enemy.damaged)
+    for (Enemy& enemy : enemies)
     {
+        if (enemy.damaged)
+            continue;
+
         bool hit = false;
 
-        if (enemy.gridX == explosion.gridX && enemy.gridY == explosion.gridY)
-        {
-            hit = true;
-        }
-        // üst
-        if (enemy.gridX == explosion.gridX && enemy.gridY == explosion.gridY - 1)
-        {
-            hit = true;
-        }
-        // alt
+        // merkez
         if (enemy.gridX == explosion.gridX &&
-            enemy.gridY == explosion.gridY + 1)
+            enemy.gridY == explosion.gridY)
         {
             hit = true;
         }
+
+        // yukarı
+        for (int i = 1; i <= bombRange; i++)
+        {
+            int y = explosion.gridY - i;
+
+            if (map[y][explosion.gridX] == '#')
+                break;
+
+            if (enemy.gridX == explosion.gridX &&
+                enemy.gridY == y)
+            {
+                hit = true;
+            }
+
+            if (map[y][explosion.gridX] == '*')
+                break;
+        }
+
+        // aşağı
+        for (int i = 1; i <= bombRange; i++)
+        {
+            int y = explosion.gridY + i;
+
+            if (map[y][explosion.gridX] == '#')
+                break;
+
+            if (enemy.gridX == explosion.gridX &&
+                enemy.gridY == y)
+            {
+                hit = true;
+            }
+
+            if (map[y][explosion.gridX] == '*')
+                break;
+        }
+
         // sol
-        if (enemy.gridX == explosion.gridX - 1 && enemy.gridY == explosion.gridY)
+        for (int i = 1; i <= bombRange; i++)
         {
-            hit = true;
+            int x = explosion.gridX - i;
+
+            if (map[explosion.gridY][x] == '#')
+                break;
+
+            if (enemy.gridX == x &&
+                enemy.gridY == explosion.gridY)
+            {
+                hit = true;
+            }
+
+            if (map[explosion.gridY][x] == '*')
+                break;
         }
-        // sag
-        if (enemy.gridX == explosion.gridX + 1 && enemy.gridY == explosion.gridY)
+
+        // sağ
+        for (int i = 1; i <= bombRange; i++)
         {
-           hit = true;
+            int x = explosion.gridX + i;
+
+            if (map[explosion.gridY][x] == '#')
+                break;
+
+            if (enemy.gridX == x &&
+                enemy.gridY == explosion.gridY)
+            {
+                hit = true;
+            }
+
+            if (map[explosion.gridY][x] == '*')
+                break;
         }
-  if (hit)
-     {
-    enemy.health--;
-     enemy.damaged = true;
-     }
+
+        if (hit)
+        {
+            enemy.health--;
+            enemy.damaged = true;
+        }
     }
 }
+     
         sf::RectangleShape center({static_cast<float>(TILE_SIZE),
     static_cast<float>(TILE_SIZE)});
         center.setFillColor(sf::Color::Yellow);
