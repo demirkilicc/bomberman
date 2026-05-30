@@ -36,6 +36,7 @@ struct Bomb
     int gridX;
     int gridY;
     sf::Clock timer;
+    float scale = 1.0f;
 };
 struct Explosion
 {
@@ -71,6 +72,9 @@ struct Enemy
      sf::Clock moveTimer;
     
      sf::Clock breakTimer;
+
+     int currentFrame = 0;
+    sf::Clock animationClock;
 };
 
 bool isEnemyThere(int x, int y, const std::vector<Enemy>& enemies, const Enemy* self = nullptr)
@@ -148,6 +152,97 @@ if (!logTexture.loadFromFile("assets/log.png"))
 }
 
 sf::Sprite logSprite(logTexture);
+
+
+sf::Texture meatTexture, bombTexture, explosionTexture, cornTexture, wormTexture;
+
+if (!meatTexture.loadFromFile("assets/meat.png"))
+{
+    return -1;
+}
+meatTexture.setSmooth(false);
+
+if (!cornTexture.loadFromFile("assets/corn.png"))
+{
+    return -1;
+}
+cornTexture.setSmooth(false);
+
+if (!wormTexture.loadFromFile("assets/worm.png"))
+{
+    return -1;
+}
+wormTexture.setSmooth(false);
+
+if (!bombTexture.loadFromFile("assets/egg.png"))
+{
+    return -1;
+}
+bombTexture.setSmooth(false);
+
+if (!explosionTexture.loadFromFile("assets/cegg.png"))
+{
+    return -1;
+}
+
+sf::Sprite meatSprite(meatTexture);
+sf::Sprite cornSprite(cornTexture);
+sf::Sprite wormSprite(wormTexture);
+sf::Sprite bombSprite(bombTexture);
+sf::Sprite explosionSprite(explosionTexture);
+
+meatSprite.setScale({
+    static_cast<float>(TILE_SIZE) / meatTexture.getSize().x,
+    static_cast<float>(TILE_SIZE) / meatTexture.getSize().y
+});
+
+cornSprite.setScale({
+    static_cast<float>(TILE_SIZE) / cornTexture.getSize().x,
+    static_cast<float>(TILE_SIZE) / cornTexture.getSize().y
+});
+
+wormSprite.setScale({
+    static_cast<float>(TILE_SIZE) / wormTexture.getSize().x,
+    static_cast<float>(TILE_SIZE) / wormTexture.getSize().y
+});
+
+bombSprite.setScale({
+    static_cast<float>(TILE_SIZE) / bombTexture.getSize().x,
+    static_cast<float>(TILE_SIZE) / bombTexture.getSize().y
+});
+
+explosionTexture.setSmooth(false);
+explosionSprite.setTexture(explosionTexture);
+explosionSprite.setScale({
+    static_cast<float>(TILE_SIZE) / explosionTexture.getSize().x,
+    static_cast<float>(TILE_SIZE) / explosionTexture.getSize().y
+});
+
+sf::Texture foxTexture, wolfTexture, butcherTexture;
+
+if (!foxTexture.loadFromFile("assets/fox.png"))
+{
+    return -1;
+}
+foxTexture.setSmooth(false);
+
+if (!wolfTexture.loadFromFile("assets/wolf.png"))
+{
+    return -1;
+}
+wolfTexture.setSmooth(false);
+
+if (!butcherTexture.loadFromFile("assets/butcher.png"))
+{
+    return -1;
+}
+butcherTexture.setSmooth(false);
+
+sf::Sprite foxSprite(foxTexture);
+sf::Sprite wolfSprite(wolfTexture);
+sf::Sprite butcherSprite(butcherTexture);
+
+
 
 
 int playerGridX = 1;
@@ -293,125 +388,100 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
     for (Enemy& enemy : enemies)
     {
        //tilki
-       if (enemy.type == 0)
-       {
-        if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.2f)
-        {
-            bool moved = false;
-            if (enemy.direction == 0)
-            {
-               if (playerGridX == enemy.gridX &&
-    playerGridY == enemy.gridY - 1)
+if (enemy.type == 0)
 {
-    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+    if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.2f)
     {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
+        bool moved = false;
+        if (enemy.direction == 0)  
         {
-            window.close();
+            if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(enemy.gridX, enemy.gridY - 1) && 
+                     !isBombThere(enemy.gridX, enemy.gridY - 1, bombs) &&  
+                     !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
+            {
+                enemy.gridY--;
+                moved = true;
+            }
         }
+        if (enemy.direction == 1)  
+        {
+            if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(enemy.gridX, enemy.gridY + 1) && 
+                     !isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && 
+                     !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
+            {
+                enemy.gridY++;
+                moved = true;
+            }
+        }
+        if (enemy.direction == 2)
+        {
+            if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(enemy.gridX - 1, enemy.gridY) && 
+                     !isBombThere(enemy.gridX - 1, enemy.gridY, bombs) &&  
+                     !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
+            {
+                enemy.gridX--;
+                moved = true;
+            }
+        }
+        if (enemy.direction == 3)
+        {
+            if (playerGridX == enemy.gridX + 1 && playerGridY == enemy.gridY)
+            {
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
+                }
+            }
+            else if (!isWall(enemy.gridX + 1, enemy.gridY) && 
+                     !isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && 
+                     !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
+            {
+                enemy.gridX++;
+                moved = true;
+            }
+        }
+        if (!moved)
+        {
+            enemy.direction = rand() % 4;
+        }
+        if(rand() % 10 == 0)
+        {
+            enemy.direction = rand() % 4;
+        }
+        enemy.moveTimer.restart();
     }
 }
-else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
-!isBombThere(enemy.gridX,enemy.gridY - 1,bombs) &&
-         !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
-{
-    enemy.gridY--;
-    moved = true;
-}
-                
-            }
-             if (enemy.direction == 1)
-            {
-               if (playerGridX == enemy.gridX &&
-    playerGridY == enemy.gridY + 1)
-{
-    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-    {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-        {
-            window.close();
-        }
-    }
-}
-else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
-!isBombThere(enemy.gridX,enemy.gridY + 1,bombs) &&
-         !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
-{
-    enemy.gridY++;
-    moved = true;
-}
-                
-            }
-            if (enemy.direction == 2)
-            {
-               if (playerGridX == enemy.gridX - 1 &&
-    playerGridY == enemy.gridY)
-{
-    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-    {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-        {
-            window.close();
-        }
-    }
-}
-else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
-!isBombThere(enemy.gridX - 1,enemy.gridY,bombs) &&
-         !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
-{
-    enemy.gridX--;
-    moved = true;
-}
-                
-            }
-             if (enemy.direction == 3)
-            {
-                 if (playerGridX == enemy.gridX + 1 &&
-    playerGridY == enemy.gridY)
-{
-    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-    {
-        playerHealth--;
-        damageClock.restart();
-
-        if (playerHealth <= 0)
-        {
-            window.close();
-        }
-    }
-}
-else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
-!isBombThere(enemy.gridX + 1,enemy.gridY,bombs) &&
-         !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
-{
-    enemy.gridX++;
-    moved = true;
-}
-                
-            }
-            if (!moved)
-            {
-                enemy.direction = rand() % 4;
-            }
-            if(rand() % 10 == 0)
-            {
-                enemy.direction = rand() % 4;
-            }
-            enemy.moveTimer.restart();
-        }
-        
-       }
        //kurt
-        if (enemy.type == 1)
+if (enemy.type == 1)
 {
     if (enemy.moveTimer.getElapsedTime().asSeconds() > 0.4f)
     {
@@ -424,20 +494,22 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
 
             if (playerGridX < enemy.gridX)
             {
-            if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
+                if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
                 {
-                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                     {
                         playerHealth--;
                         damageClock.restart();
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX - 1, enemy.gridY) &&
-!isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
+                else if (!isWall(enemy.gridX - 1, enemy.gridY) && 
+                         !isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && 
+                         !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
                 {
                     enemy.gridX--;
                     moved = true;
+                    enemy.direction = 2;
                 }
             }
             else if (playerGridX > enemy.gridX)
@@ -451,53 +523,57 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
-!isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
+                else if (!isWall(enemy.gridX + 1, enemy.gridY) && 
+                         !isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && 
+                         !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
                 {
                     enemy.gridX++;
                     moved = true;
+                    enemy.direction = 3;
                 }
             }
 
-        
             if (!moved)
             {
-
-             if (playerGridY < enemy.gridY)
-            {
-                 if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
+                if (playerGridY < enemy.gridY)
+                {
+                    if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
                     {
-                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                         {
                             playerHealth--;
                             damageClock.restart();
                             if (playerHealth <= 0) window.close();
                         }
                     }
-                    else if (!isWall(enemy.gridX, enemy.gridY - 1) &&
-!isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
+                    else if (!isWall(enemy.gridX, enemy.gridY - 1) && 
+                             !isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && 
+                             !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
                     {
                         enemy.gridY--;
+                        enemy.direction = 0;
                     }
                 }
                 else if (playerGridY > enemy.gridY)
                 {
-                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1)
+                    if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1)
                     {
-                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                         {
                             playerHealth--;
                             damageClock.restart();
                             if (playerHealth <= 0) window.close();
                         }
                     }
-                    else if (!isWall(enemy.gridX, enemy.gridY + 1) &&
-!isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
+                    else if (!isWall(enemy.gridX, enemy.gridY + 1) && 
+                             !isBombThere(enemy.gridX, enemy.gridY + 1, bombs) &&
+                             !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
                     {
                         enemy.gridY++;
+                        enemy.direction = 1;
                     }
-             }
-         }
+                }
+            }
         }
         else 
         {
@@ -510,7 +586,6 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
             else if (enemy.direction == 2) nextX--;
             else if (enemy.direction == 3) nextX++;
 
-    
             if (playerGridX == nextX && playerGridY == nextY)
             {
                 if (damageClock.getElapsedTime().asSeconds() > 1.0f)
@@ -520,7 +595,9 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies, &enemy))
+            else if (!isWall(nextX, nextY) && 
+                     !isBombThere(nextX, nextY, bombs) &&
+                     !isEnemyThere(nextX, nextY, enemies, &enemy))
             {
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
@@ -536,7 +613,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
     }
 }
      //kasap
-     if (enemy.type == 2)
+if (enemy.type == 2)
 {
     if (enemy.breakingWall)
     {
@@ -554,57 +631,62 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
         {
             if (playerGridX == enemy.gridX - 1 && playerGridY == enemy.gridY)
             {
-            if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                 {
                     playerHealth--;
                     damageClock.restart();
                     if (playerHealth <= 0) window.close();
                 }
-             }
+            }
             else if (!isWall(enemy.gridX - 1, enemy.gridY) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
             {
                 enemy.gridX--;
                 moved = true;
-             } 
+                enemy.direction = 2;  
+            }
             else if (map[enemy.gridY][enemy.gridX - 1] == '*')
             {
-             enemy.breakingWall = true;
-            enemy.breakX = enemy.gridX - 1;
-            enemy.breakY = enemy.gridY;
-             enemy.breakTimer.restart();
-              }
+                enemy.breakingWall = true;
+                enemy.breakX = enemy.gridX - 1;
+                enemy.breakY = enemy.gridY;
+                enemy.breakTimer.restart();
+                enemy.direction = 2;  
+            }
         }
         else if (playerGridX > enemy.gridX)
         {
             if (playerGridX == enemy.gridX + 1 && playerGridY == enemy.gridY)
-           {
+            {
                 if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                 {
-                playerHealth--;
-                damageClock.restart();
-                if (playerHealth <= 0) window.close();
+                    playerHealth--;
+                    damageClock.restart();
+                    if (playerHealth <= 0) window.close();
                 }
-             }
+            }
             else if (!isWall(enemy.gridX + 1, enemy.gridY) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
-             {
-            enemy.gridX++;
-             moved = true;
-              } 
+            {
+                enemy.gridX++;
+                moved = true;
+                enemy.direction = 3; 
+            }
             else if (map[enemy.gridY][enemy.gridX + 1] == '*')
             {
-              enemy.breakingWall = true;
-             enemy.breakX = enemy.gridX + 1;
-            enemy.breakY = enemy.gridY;
-            enemy.breakTimer.restart();
-            }  
+                enemy.breakingWall = true;
+                enemy.breakX = enemy.gridX + 1;
+                enemy.breakY = enemy.gridY;
+                enemy.breakTimer.restart();
+                enemy.direction = 3;  
+            }
         }
+        
         if (!moved && !enemy.breakingWall)
         {
             if (playerGridY < enemy.gridY)
             {
-            if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
-               {
-                if (damageClock.getElapsedTime().asSeconds() > 1.0f)
+                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY - 1)
+                {
+                    if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                     {
                         playerHealth--;
                         damageClock.restart();
@@ -615,18 +697,20 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                 {
                     enemy.gridY--;
                     moved = true;
-                } 
+                    enemy.direction = 0; 
+                }
                 else if (map[enemy.gridY - 1][enemy.gridX] == '*')
                 {
-                enemy.breakingWall = true;
-                enemy.breakX = enemy.gridX;
-                enemy.breakY = enemy.gridY - 1;
-                enemy.breakTimer.restart();
+                    enemy.breakingWall = true;
+                    enemy.breakX = enemy.gridX;
+                    enemy.breakY = enemy.gridY - 1;
+                    enemy.breakTimer.restart();
+                    enemy.direction = 0; 
                 }
             }
             else if (playerGridY > enemy.gridY)
             {
-                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1) 
+                if (playerGridX == enemy.gridX && playerGridY == enemy.gridY + 1)
                 {
                     if (damageClock.getElapsedTime().asSeconds() > 1.0f)
                     {
@@ -639,17 +723,20 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                 {
                     enemy.gridY++;
                     moved = true;
-                } 
+                    enemy.direction = 1;
+                }
                 else if (map[enemy.gridY + 1][enemy.gridX] == '*')
                 {
-                enemy.breakingWall = true;
-                enemy.breakX = enemy.gridX;
-                enemy.breakY = enemy.gridY + 1;
-                enemy.breakTimer.restart();
-             }  
-          }
+                    enemy.breakingWall = true;
+                    enemy.breakX = enemy.gridX;
+                    enemy.breakY = enemy.gridY + 1;
+                    enemy.breakTimer.restart();
+                    enemy.direction = 1; 
+                }
+            }
         }
-        if (!moved && !enemy.breakingWall) 
+        
+        if (!moved && !enemy.breakingWall)
         {
             int nextX = enemy.gridX;
             int nextY = enemy.gridY;
@@ -673,6 +760,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
                 moved = true;
+               
             }
             else if (map[nextY][nextX] == '*')
             {
@@ -692,7 +780,7 @@ else if (!isWall(enemy.gridX + 1, enemy.gridY) &&
      }
 
 
-     // Oyuncu düşmana çarptı mı?
+    
 for (Enemy& enemy : enemies)
 {
     if (playerGridX == enemy.gridX && playerGridY == enemy.gridY)
@@ -836,14 +924,31 @@ playerSprite.setPosition({
     
    }
    
-    for (const Bomb& bomb : bombs) 
-    { 
-     sf::CircleShape bombShape(15.f);
-     bombShape.setOrigin({15.f,15.f});
-    bombShape.setFillColor(sf::Color::Black);
-    bombShape.setPosition({static_cast<float>(bomb.gridX * TILE_SIZE + TILE_SIZE / 2),static_cast<float>(bomb.gridY * TILE_SIZE + TILE_SIZE / 2)});
-     window.draw(bombShape); 
-     }
+
+for (Bomb& bomb : bombs)
+{
+    float elapsed = bomb.timer.getElapsedTime().asSeconds();
+    
+   
+    bomb.scale = 0.7f + (elapsed / 2.0f) * 1.0f;  
+    
+    if (bomb.scale > 1.7f) bomb.scale = 1.7f;
+    
+    float bombSize = 48.0f * bomb.scale;
+    float offset = (TILE_SIZE - bombSize) / 2.0f;
+    
+    bombSprite.setScale({
+        bombSize / bombTexture.getSize().x,
+        bombSize / bombTexture.getSize().y
+    });
+    
+    bombSprite.setPosition({
+        static_cast<float>(bomb.gridX * TILE_SIZE + offset),
+        static_cast<float>(bomb.gridY * TILE_SIZE + offset)
+    });
+    
+    window.draw(bombSprite);
+}
      for (int i = 0; i < explosions.size(); i++)
      {
        if (explosions[i].timer.getElapsedTime().asSeconds() > 0.5f)
@@ -867,7 +972,7 @@ playerSprite.setPosition({
         hitPlayer = true;
     }
 
-    // yukarı
+    // üst
     for (int i = 1; i <= bombRange; i++)
     {
         int y = explosion.gridY - i;
@@ -885,7 +990,7 @@ playerSprite.setPosition({
             break;
     }
 
-    // aşağı
+    // alt
     for (int i = 1; i <= bombRange; i++)
     {
         int y = explosion.gridY + i;
@@ -921,7 +1026,7 @@ playerSprite.setPosition({
             break;
     }
 
-    // sağ
+    // sag
     for (int i = 1; i <= bombRange; i++)
     {
         int x = explosion.gridX + i;
@@ -965,7 +1070,7 @@ playerSprite.setPosition({
         map[gridY][gridX] = '.';
     }
 
-    // yukarı
+    // üst
     for (int i = 1; i <= bombRange; i++)
     {
         int y = gridY - i;
@@ -1003,7 +1108,7 @@ playerSprite.setPosition({
         }
     }
 
-    // aşağı
+    // alt
     for (int i = 1; i <= bombRange; i++)
     {
         int y = gridY + i;
@@ -1021,7 +1126,7 @@ playerSprite.setPosition({
         p.gridX = gridX;
         p.gridY = y;
 
-        p.type = rand() % 2;
+        p.type = rand() % 3;
 
         powerUps.push_back(p);
     }
@@ -1058,7 +1163,7 @@ playerSprite.setPosition({
         }
     }
 
-    // sağ
+    // sag
     for (int i = 1; i <= bombRange; i++)
     {
         int x = gridX + i;
@@ -1095,14 +1200,13 @@ playerSprite.setPosition({
 
         bool hit = false;
 
-        // merkez
         if (enemy.gridX == explosion.gridX &&
             enemy.gridY == explosion.gridY)
         {
             hit = true;
         }
 
-        // yukarı
+        // üst
         for (int i = 1; i <= bombRange; i++)
         {
             int y = explosion.gridY - i;
@@ -1120,7 +1224,7 @@ playerSprite.setPosition({
                 break;
         }
 
-        // aşağı
+        // alt
         for (int i = 1; i <= bombRange; i++)
         {
             int y = explosion.gridY + i;
@@ -1156,7 +1260,7 @@ playerSprite.setPosition({
                 break;
         }
 
-        // sağ
+        // sag
         for (int i = 1; i <= bombRange; i++)
         {
             int x = explosion.gridX + i;
@@ -1182,162 +1286,83 @@ playerSprite.setPosition({
     }
 }
      
-        sf::RectangleShape center({static_cast<float>(TILE_SIZE),
-    static_cast<float>(TILE_SIZE)});
-        center.setFillColor(sf::Color::Yellow);
-        center.setPosition({
-            static_cast<float>(explosion.gridX * TILE_SIZE),static_cast<float>(explosion.gridY * TILE_SIZE)
-        });
-        window.draw(center);
-        //yukarı
-        for (int i = 1; i <= bombRange; i++)
+        for (const Explosion& explosion : explosions)
 {
-    int y = explosion.gridY - i;
-
-    if (map[y][explosion.gridX] == '#')
-    {
-        break;
-    }
-
-    sf::RectangleShape up({
-        static_cast<float>(TILE_SIZE),
-        static_cast<float>(TILE_SIZE)
-    });
-
-    up.setFillColor(sf::Color::Yellow);
-
-    up.setPosition({
+    explosionSprite.setPosition({
         static_cast<float>(explosion.gridX * TILE_SIZE),
-        static_cast<float>(y * TILE_SIZE)
+        static_cast<float>(explosion.gridY * TILE_SIZE)
     });
-
-    window.draw(up);
-
-    if (map[y][explosion.gridX] == '*')
+    window.draw(explosionSprite);
+    
+    // Üst
+    for (int i = 1; i <= bombRange; i++)
     {
-        break;
-    }
-}
-        //aşağı
-        for (int i = 1; i <= bombRange; i++)
-{
-    int y = explosion.gridY + i;
-
-    if (map[y][explosion.gridX] == '#')
-    {
-        break;
-    }
-
-    sf::RectangleShape down({
-        static_cast<float>(TILE_SIZE),
-        static_cast<float>(TILE_SIZE)
-    });
-
-    down.setFillColor(sf::Color::Yellow);
-
-    down.setPosition({
-        static_cast<float>(explosion.gridX * TILE_SIZE),
-        static_cast<float>(y * TILE_SIZE)
-    });
-
-    window.draw(down);
-
-    if (map[y][explosion.gridX] == '*')
-    {
-        break;
-    }
-}
+        int y = explosion.gridY - i;
+        if (y < 0) break;
+        if (map[y][explosion.gridX] == '#') break;
         
-         //sol
-         for (int i = 1; i <= bombRange; i++)
-{
-    int x = explosion.gridX - i;
-
-    if (map[explosion.gridY][x] == '#')
-    {
-        break;
+        explosionSprite.setPosition({
+            static_cast<float>(explosion.gridX * TILE_SIZE),
+            static_cast<float>(y * TILE_SIZE)
+        });
+        window.draw(explosionSprite);
+        
+        if (map[y][explosion.gridX] == '*') break;
     }
-
-    sf::RectangleShape left({
-        static_cast<float>(TILE_SIZE),
-        static_cast<float>(TILE_SIZE)
-    });
-
-    left.setFillColor(sf::Color::Yellow);
-
-    left.setPosition({
-        static_cast<float>(x * TILE_SIZE),
-        static_cast<float>(explosion.gridY * TILE_SIZE)
-    });
-
-    window.draw(left);
-
-    if (map[explosion.gridY][x] == '*')
+    
+    // alt
+    for (int i = 1; i <= bombRange; i++)
     {
-        break;
+        int y = explosion.gridY + i;
+        if (y >= MAP_HEIGHT) break;
+        if (map[y][explosion.gridX] == '#') break;
+        
+        explosionSprite.setPosition({
+            static_cast<float>(explosion.gridX * TILE_SIZE),
+            static_cast<float>(y * TILE_SIZE)
+        });
+        window.draw(explosionSprite);
+        
+        if (map[y][explosion.gridX] == '*') break;
     }
-}
-       
-             //sag
-             for (int i = 1; i <= bombRange; i++)
-{
-    int x = explosion.gridX + i;
-
-    if (map[explosion.gridY][x] == '#')
+    
+    // sol
+    for (int i = 1; i <= bombRange; i++)
     {
-        break;
+        int x = explosion.gridX - i;
+        if (x < 0) break;
+        if (map[explosion.gridY][x] == '#') break;
+        
+        explosionSprite.setPosition({
+            static_cast<float>(x * TILE_SIZE),
+            static_cast<float>(explosion.gridY * TILE_SIZE)
+        });
+        window.draw(explosionSprite);
+        
+        if (map[explosion.gridY][x] == '*') break;
     }
-
-    sf::RectangleShape right({
-        static_cast<float>(TILE_SIZE),
-        static_cast<float>(TILE_SIZE)
-    });
-
-    right.setFillColor(sf::Color::Yellow);
-
-    right.setPosition({
-        static_cast<float>(x * TILE_SIZE),
-        static_cast<float>(explosion.gridY * TILE_SIZE)
-    });
-
-    window.draw(right);
-
-    if (map[explosion.gridY][x] == '*')
+    
+    // sag
+    for (int i = 1; i <= bombRange; i++)
     {
-        break;
+        int x = explosion.gridX + i;
+        if (x >= MAP_WIDTH) break;
+        if (map[explosion.gridY][x] == '#') break;
+        
+        explosionSprite.setPosition({
+            static_cast<float>(x * TILE_SIZE),
+            static_cast<float>(explosion.gridY * TILE_SIZE)
+        });
+        window.draw(explosionSprite);
+        
+        if (map[explosion.gridY][x] == '*') break;
     }
 }
     
     
    }
-   for (const Enemy& enemy : enemies)
-   {
-  
-    sf::RectangleShape enemyShape({
-        static_cast<float>(TILE_SIZE),
-        static_cast<float>(TILE_SIZE)});
 
-        if (enemy.type == 0)
-        {
-            enemyShape.setFillColor(sf::Color(255,140,0));
-        }
-
-        if (enemy.type == 1)
-        {
-            enemyShape.setFillColor(sf::Color(120,120,120));
-        }
-
-        if (enemy.type == 2)
-        {
-            enemyShape.setFillColor(sf::Color(120,0,0));
-        }
-        
-        enemyShape.setPosition({ static_cast<float>(enemy.gridX * TILE_SIZE),
-        static_cast<float>(enemy.gridY * TILE_SIZE)
-    });
-window.draw(enemyShape);
-    }
-    for (int i = 0; i < enemies.size(); i++)
+for (int i = 0; i < enemies.size(); i++)
 {
     if (enemies[i].health <= 0)
     {
@@ -1346,33 +1371,88 @@ window.draw(enemyShape);
     }
 }
 
-for (const PowerUp& p : powerUps)
+for (Enemy& enemy : enemies)
 {
-    sf::CircleShape shape(12.f);
-
-    if (p.type == 0)
+    if (enemy.animationClock.getElapsedTime().asSeconds() > 0.15f)
     {
-        shape.setFillColor(sf::Color::Red);
-    }
-
-    if (p.type == 1)
-    {
-        shape.setFillColor(sf::Color::Green);
+        enemy.currentFrame++;
+        if (enemy.currentFrame > 2)
+        {
+            enemy.currentFrame = 0;
+        }
+        enemy.animationClock.restart();
     }
     
-    if (p.type == 2)
+    int directionRow = 0;
+    switch(enemy.direction)
+    {
+        case 0: directionRow = 3; break; 
+        case 1: directionRow = 0; break; 
+        case 2: directionRow = 1; break; 
+        case 3: directionRow = 2; break; 
+    }
+    
+    sf::IntRect textureRect(
+        {enemy.currentFrame * 48, directionRow * 48},
+        {48, 48}
+    );
+    
+    if (enemy.type == 0)
+    {
+        foxSprite.setTextureRect(textureRect);
+        foxSprite.setPosition({
+            static_cast<float>(enemy.gridX * TILE_SIZE),
+            static_cast<float>(enemy.gridY * TILE_SIZE)
+        });
+        window.draw(foxSprite);
+    }
+    else if (enemy.type == 1)
+    {
+        wolfSprite.setTextureRect(textureRect);
+        wolfSprite.setPosition({
+            static_cast<float>(enemy.gridX * TILE_SIZE),
+            static_cast<float>(enemy.gridY * TILE_SIZE)
+        });
+        window.draw(wolfSprite);
+    }
+    else if (enemy.type == 2)
+    {
+        butcherSprite.setTextureRect(textureRect);
+        butcherSprite.setPosition({
+            static_cast<float>(enemy.gridX * TILE_SIZE),
+            static_cast<float>(enemy.gridY * TILE_SIZE)
+        });
+        window.draw(butcherSprite);
+    }
+}
+
+for (const PowerUp& p : powerUps)
 {
-    shape.setFillColor(sf::Color::Blue);
+    if (p.type == 0)
+    {
+        meatSprite.setPosition({
+            static_cast<float>(p.gridX * TILE_SIZE),
+            static_cast<float>(p.gridY * TILE_SIZE)
+        });
+        window.draw(meatSprite);
+    }
+    else if (p.type == 1)
+    {
+        cornSprite.setPosition({
+            static_cast<float>(p.gridX * TILE_SIZE),
+            static_cast<float>(p.gridY * TILE_SIZE)
+        });
+        window.draw(cornSprite);
+    }
+    else if (p.type == 2)
+    {
+        wormSprite.setPosition({
+            static_cast<float>(p.gridX * TILE_SIZE),
+            static_cast<float>(p.gridY * TILE_SIZE)
+        });
+        window.draw(wormSprite);
+    }
 }
-
-    shape.setPosition({
-        static_cast<float>(p.gridX * TILE_SIZE + 12),
-        static_cast<float>(p.gridY * TILE_SIZE + 12)
-    });
-
-    window.draw(shape);
-}
-
  window.draw(playerSprite);
     window.display();
 } 
