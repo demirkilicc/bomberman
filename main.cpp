@@ -21,20 +21,19 @@ char map[MAP_HEIGHT][MAP_WIDTH+1] =
 "#...............***.#",
 "#####################"
 };
-bool isWall(int x,int y)
+
+bool isWall(int x, int y, char (*currentMap)[MAP_WIDTH+1])
 {
-    if (x < 0 || x >= MAP_WIDTH  || y < 0 || y >=MAP_HEIGHT)
-    {
+    if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT)
         return true;
-    }
-    return map[y][x] == '#' ||
-    map[y][x] == '*';
-    
+    return currentMap[y][x] == '#' || currentMap[y][x] == '*';
 }
+
 struct Bomb
 {
     int gridX;
     int gridY;
+    int owner;
     sf::Clock timer;
     float scale = 1.0f;
 };
@@ -42,6 +41,7 @@ struct Explosion
 {
     int gridX;
     int gridY;
+    int owner;
     sf::Clock timer;
 };
 
@@ -104,6 +104,41 @@ bool isBombThere(int x, int y, const std::vector<Bomb>& bombs)
     }
     return false;
 }
+
+enum GameState
+{
+    MENU,
+    SINGLEPLAYER,
+    MULTIPLAYER
+};
+
+int player2GridX = 1;
+int player2GridY = 1;
+int player2Health = 3;
+int player2CurrentFrame = 1;
+int player2CurrentDirection = 0;
+sf::Clock player2AnimationClock;
+bool player2Moving = false;
+
+GameState gameState = MENU;
+
+char multiplayerMap[MAP_HEIGHT][MAP_WIDTH+1] = 
+{
+"#####################",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#...................#",
+"#####################"
+};
+
 int main()
 {
     sf::RenderWindow window(sf::VideoMode({MAP_WIDTH * TILE_SIZE, MAP_HEIGHT * TILE_SIZE}),
@@ -120,6 +155,17 @@ if (!playerTexture.loadFromFile("assets/chicken.png"))
 playerTexture.setSmooth(false);
 
 sf::Sprite playerSprite(playerTexture);
+
+
+sf::Texture player2Texture;
+if (!player2Texture.loadFromFile("assets/chicken.png"))
+{
+    player2Texture = playerTexture;
+}
+player2Texture.setSmooth(false);
+sf::Sprite player2Sprite(player2Texture);
+
+
 
  sf::Texture grassTexture;
 
@@ -242,11 +288,45 @@ sf::Sprite foxSprite(foxTexture);
 sf::Sprite wolfSprite(wolfTexture);
 sf::Sprite butcherSprite(butcherTexture);
 
+sf::Font font;
+
+if (!font.openFromFile("assets/arial.ttf"))
+{
+    return -1;
+}
 
 
+sf::Text title(font);
+title.setString("BOMBER CHICKEN");
+title.setCharacterSize(48);
+title.setPosition({250.f, 100.f});
+
+sf::Text singleText(font);
+singleText.setString("1 - Single Player");
+singleText.setCharacterSize(32);
+singleText.setPosition({300.f, 250.f});
+
+sf::Text multiText(font);
+multiText.setString("2 - Multiplayer");
+multiText.setCharacterSize(32);
+multiText.setPosition({300.f, 320.f});
+
+sf::Text exitText(font);
+exitText.setString("3 - Exit");
+exitText.setCharacterSize(32);
+exitText.setPosition({300.f, 390.f});
 
 int playerGridX = 1;
 int playerGridY = 1;
+
+int player2GridX = MAP_WIDTH - 2;
+int player2GridY = MAP_HEIGHT - 2;
+int player2Health = 3;
+int player2CurrentFrame = 1;
+int player2CurrentDirection = 0;
+sf::Clock player2AnimationClock;
+bool player2Moving = false;
+
 const int FRAME_WIDTH = 48;
 const int FRAME_HEIGHT = 48;
 
@@ -259,6 +339,10 @@ int playerHealth = 3;
 int bombRange = 1;
 int maxBombs = 1;
 
+int player2BombRange = 1;
+int player2MaxBombs = 1;
+float player2MoveDelay = 0.15f;
+
 float moveDelay = 0.15f;
 
 
@@ -268,8 +352,12 @@ std::vector<Explosion> explosions;
 std::vector<PowerUp> powerUps;
 std::vector<Enemy> enemies;
 sf::Clock moveClock;
+sf::Clock player2MoveClock;
 sf::Clock damageClock;
+sf::Clock player2DamageClock;
 bool spacePressed = false;
+bool player2SpacePressed = false;
+
 Enemy fox;
 fox.gridX = 5;
 fox.gridY = 5;
@@ -297,8 +385,48 @@ butcher.direction = rand() % 4;
 enemies.push_back(butcher);
 
 
+
 while (window.isOpen())
 {
+
+     char (*currentMap)[MAP_WIDTH+1];
+    if (gameState == MULTIPLAYER)
+    {
+        currentMap = multiplayerMap;
+    }
+    else
+    {
+        currentMap = map;
+    }
+
+    if (gameState == MENU)
+{
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num1))
+    {
+        gameState = SINGLEPLAYER;
+    }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num2))
+    {
+        gameState = MULTIPLAYER;
+    }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Num3))
+{
+    window.close();
+}
+
+    window.clear();
+
+    window.draw(title);
+    window.draw(singleText);
+    window.draw(multiText);
+
+    window.display();
+
+    continue;
+}
+
     bool moving = false;
     while (const std::optional event =  window.pollEvent())
  {
@@ -316,75 +444,141 @@ if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) &&
 {
 }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
+    // 1. OYUNCU BOMBASI
+if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space))
+{
+    if (!spacePressed && bombs.size() < maxBombs)  // 1. oyuncunun maxBombs'u
     {
-     if (!spacePressed && bombs.size() < maxBombs)
-     {
-         Bomb bomb;
-
+        Bomb bomb;
         bomb.gridX = playerGridX;
         bomb.gridY = playerGridY;
-
+        bomb.owner = 1;
         bombs.push_back(bomb);
-
         spacePressed = true;
-     }
+    }
+}
+else
+{
+    spacePressed = false;
+}
+
+// 2. OYUNCU BOMBASI
+if (gameState == MULTIPLAYER)
+{
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::RShift))
+    {
+        if (!player2SpacePressed && bombs.size() < player2MaxBombs)  // 2. oyuncunun maxBombs'u
+        {
+            Bomb bomb;
+            bomb.gridX = player2GridX;
+            bomb.gridY = player2GridY;
+            bomb.owner = 2;
+            bombs.push_back(bomb);
+            player2SpacePressed = true;
+        }
     }
     else
     {
-        spacePressed = false;
+        player2SpacePressed = false;
     }
-    
-    if (moveClock.getElapsedTime().asSeconds() > moveDelay)
-    {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
+}
+  
+        // ========== 1. OYUNCU HAREKETİ (WASD) ==========
+if (moveClock.getElapsedTime().asSeconds() > moveDelay)
+{
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W))
     { 
-        if (!isWall(playerGridX,playerGridY - 1) &&
-    !isBombThere(playerGridX,playerGridY - 1,bombs))
+        if (!isWall(playerGridX, playerGridY - 1, currentMap) && !isBombThere(playerGridX, playerGridY - 1, bombs))
         {
             currentDirection = 3;
-              moving = true;
-            playerGridY --;
+            moving = true;
+            playerGridY--;
         }
-        moveClock.restart();
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::S))
     { 
-     if (!isWall(playerGridX,playerGridY + 1) &&
-    !isBombThere(playerGridX,playerGridY + 1,bombs))
+        if (!isWall(playerGridX, playerGridY + 1, currentMap) && !isBombThere(playerGridX, playerGridY + 1, bombs))
         {
             currentDirection = 0;
             moving = true;
-            playerGridY ++;
+            playerGridY++;
         }
-         moveClock.restart();
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A))
     { 
-     if (!isWall(playerGridX - 1,playerGridY) &&
-    !isBombThere(playerGridX - 1,playerGridY,bombs))
+        if (!isWall(playerGridX - 1, playerGridY, currentMap) && !isBombThere(playerGridX - 1, playerGridY, bombs))
         {
             currentDirection = 1;
             moving = true;
-            playerGridX --;
+            playerGridX--;
         }
-         moveClock.restart();
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D))
     { 
-      if (!isWall(playerGridX + 1, playerGridY) &&
-    !isBombThere(playerGridX + 1,playerGridY,bombs))
+        if (!isWall(playerGridX + 1, playerGridY, currentMap) && !isBombThere(playerGridX + 1, playerGridY, bombs))
         {
             currentDirection = 2;
-             moving = true;
-            playerGridX ++;
+            moving = true;
+            playerGridX++;
         }
-         moveClock.restart();
     }
+    
+    moveClock.restart();
+}
+
+// ========== 2. OYUNCU HAREKETİ (OK TUŞLARI) - SADECE MULTIPLAYER ==========
+if (gameState == MULTIPLAYER)
+{
+    // Önce hareket etmediğini varsay
+    player2Moving = false;
+    
+    if (player2MoveClock.getElapsedTime().asSeconds() > player2MoveDelay)
+    {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
+        {
+            if (!isWall(player2GridX, player2GridY - 1, currentMap) && !isBombThere(player2GridX, player2GridY - 1, bombs))
+            {
+                player2CurrentDirection = 3;
+                player2Moving = true;
+                player2GridY--;
+            }
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Down))
+        {
+            if (!isWall(player2GridX, player2GridY + 1, currentMap) && !isBombThere(player2GridX, player2GridY + 1, bombs))
+            {
+                player2CurrentDirection = 0;
+                player2Moving = true;
+                player2GridY++;
+            }
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
+        {
+            if (!isWall(player2GridX - 1, player2GridY, currentMap) && !isBombThere(player2GridX - 1, player2GridY, bombs))
+            {
+                player2CurrentDirection = 1;
+                player2Moving = true;
+                player2GridX--;
+            }
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+        {
+            if (!isWall(player2GridX + 1, player2GridY, currentMap) && !isBombThere(player2GridX + 1, player2GridY, bombs))
+            {
+                player2CurrentDirection = 2;
+                player2Moving = true;
+                player2GridX++;
+            }
+        }
         
-        
+        player2MoveClock.restart();
     }
+}
+
     //Düşman ai
+    if (gameState == SINGLEPLAYER)
+    {
+    
     for (Enemy& enemy : enemies)
     {
        //tilki
@@ -404,7 +598,7 @@ if (enemy.type == 0)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX, enemy.gridY - 1) && 
+            else if (!isWall(enemy.gridX, enemy.gridY - 1, currentMap) && 
                      !isBombThere(enemy.gridX, enemy.gridY - 1, bombs) &&  
                      !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
             {
@@ -423,7 +617,7 @@ if (enemy.type == 0)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX, enemy.gridY + 1) && 
+            else if (!isWall(enemy.gridX, enemy.gridY + 1, currentMap) && 
                      !isBombThere(enemy.gridX, enemy.gridY + 1, bombs) && 
                      !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
             {
@@ -442,7 +636,7 @@ if (enemy.type == 0)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX - 1, enemy.gridY) && 
+            else if (!isWall(enemy.gridX - 1, enemy.gridY, currentMap) && 
                      !isBombThere(enemy.gridX - 1, enemy.gridY, bombs) &&  
                      !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
             {
@@ -461,7 +655,7 @@ if (enemy.type == 0)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX + 1, enemy.gridY) && 
+            else if (!isWall(enemy.gridX + 1, enemy.gridY, currentMap) && 
                      !isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && 
                      !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
             {
@@ -503,7 +697,7 @@ if (enemy.type == 1)
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX - 1, enemy.gridY) && 
+                else if (!isWall(enemy.gridX - 1, enemy.gridY, currentMap) && 
                          !isBombThere(enemy.gridX - 1, enemy.gridY, bombs) && 
                          !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
                 {
@@ -523,7 +717,7 @@ if (enemy.type == 1)
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX + 1, enemy.gridY) && 
+                else if (!isWall(enemy.gridX + 1, enemy.gridY, currentMap) && 
                          !isBombThere(enemy.gridX + 1, enemy.gridY, bombs) && 
                          !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
                 {
@@ -546,7 +740,7 @@ if (enemy.type == 1)
                             if (playerHealth <= 0) window.close();
                         }
                     }
-                    else if (!isWall(enemy.gridX, enemy.gridY - 1) && 
+                    else if (!isWall(enemy.gridX, enemy.gridY - 1, currentMap) && 
                              !isBombThere(enemy.gridX, enemy.gridY - 1, bombs) && 
                              !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
                     {
@@ -565,7 +759,7 @@ if (enemy.type == 1)
                             if (playerHealth <= 0) window.close();
                         }
                     }
-                    else if (!isWall(enemy.gridX, enemy.gridY + 1) && 
+                    else if (!isWall(enemy.gridX, enemy.gridY + 1, currentMap) && 
                              !isBombThere(enemy.gridX, enemy.gridY + 1, bombs) &&
                              !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
                     {
@@ -595,7 +789,7 @@ if (enemy.type == 1)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(nextX, nextY) && 
+            else if (!isWall(nextX, nextY, currentMap) && 
                      !isBombThere(nextX, nextY, bombs) &&
                      !isEnemyThere(nextX, nextY, enemies, &enemy))
             {
@@ -619,7 +813,7 @@ if (enemy.type == 2)
     {
         if (enemy.breakTimer.getElapsedTime().asSeconds() > 1.0f)
         {
-            map[enemy.breakY][enemy.breakX] = '.';
+            currentMap[enemy.breakY][enemy.breakX] = '.';
             enemy.breakingWall = false;
         }
     }
@@ -638,13 +832,13 @@ if (enemy.type == 2)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX - 1, enemy.gridY) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
+            else if (!isWall(enemy.gridX - 1, enemy.gridY, currentMap) && !isEnemyThere(enemy.gridX - 1, enemy.gridY, enemies, &enemy))
             {
                 enemy.gridX--;
                 moved = true;
                 enemy.direction = 2;  
             }
-            else if (map[enemy.gridY][enemy.gridX - 1] == '*')
+            else if (currentMap[enemy.gridY][enemy.gridX - 1] == '*')
             {
                 enemy.breakingWall = true;
                 enemy.breakX = enemy.gridX - 1;
@@ -664,13 +858,13 @@ if (enemy.type == 2)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(enemy.gridX + 1, enemy.gridY) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
+            else if (!isWall(enemy.gridX + 1, enemy.gridY, currentMap) && !isEnemyThere(enemy.gridX + 1, enemy.gridY, enemies, &enemy))
             {
                 enemy.gridX++;
                 moved = true;
                 enemy.direction = 3; 
             }
-            else if (map[enemy.gridY][enemy.gridX + 1] == '*')
+            else if (currentMap[enemy.gridY][enemy.gridX + 1] == '*')
             {
                 enemy.breakingWall = true;
                 enemy.breakX = enemy.gridX + 1;
@@ -693,13 +887,13 @@ if (enemy.type == 2)
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX, enemy.gridY - 1) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
+                else if (!isWall(enemy.gridX, enemy.gridY - 1, currentMap) && !isEnemyThere(enemy.gridX, enemy.gridY - 1, enemies, &enemy))
                 {
                     enemy.gridY--;
                     moved = true;
                     enemy.direction = 0; 
                 }
-                else if (map[enemy.gridY - 1][enemy.gridX] == '*')
+                else if (currentMap[enemy.gridY - 1][enemy.gridX] == '*')
                 {
                     enemy.breakingWall = true;
                     enemy.breakX = enemy.gridX;
@@ -719,13 +913,13 @@ if (enemy.type == 2)
                         if (playerHealth <= 0) window.close();
                     }
                 }
-                else if (!isWall(enemy.gridX, enemy.gridY + 1) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
+                else if (!isWall(enemy.gridX, enemy.gridY + 1, currentMap) && !isEnemyThere(enemy.gridX, enemy.gridY + 1, enemies, &enemy))
                 {
                     enemy.gridY++;
                     moved = true;
                     enemy.direction = 1;
                 }
-                else if (map[enemy.gridY + 1][enemy.gridX] == '*')
+                else if (currentMap[enemy.gridY + 1][enemy.gridX] == '*')
                 {
                     enemy.breakingWall = true;
                     enemy.breakX = enemy.gridX;
@@ -755,14 +949,14 @@ if (enemy.type == 2)
                     if (playerHealth <= 0) window.close();
                 }
             }
-            else if (!isWall(nextX, nextY) && !isEnemyThere(nextX, nextY, enemies, &enemy))
+            else if (!isWall(nextX, nextY, currentMap) && !isEnemyThere(nextX, nextY, enemies, &enemy))
             {
                 enemy.gridX = nextX;
                 enemy.gridY = nextY;
                 moved = true;
                
             }
-            else if (map[nextY][nextX] == '*')
+            else if (currentMap[nextY][nextX] == '*')
             {
                 enemy.breakingWall = true;
                 enemy.breakX = nextX;
@@ -795,41 +989,38 @@ for (Enemy& enemy : enemies)
         }
     }
 }
+  }
 
-
-
-
-     
-     for (int i = 0; i < powerUps.size(); i++)
+for (int i = 0; i < powerUps.size(); i++)
 {
-    if (playerGridX == powerUps[i].gridX &&
-        playerGridY == powerUps[i].gridY)
+    // 1. OYUNCU POWERUP'ı
+    if (playerGridX == powerUps[i].gridX && playerGridY == powerUps[i].gridY)
     {
-        if (powerUps[i].type == 0)
+        if (powerUps[i].type == 0) bombRange++;
+        else if (powerUps[i].type == 1) maxBombs++;
+        else if (powerUps[i].type == 2)
         {
-            bombRange++;
+            moveDelay -= 0.02f;
+            if (moveDelay < 0.05f) moveDelay = 0.05f;
         }
-
-        if (powerUps[i].type == 1)
-        {
-            maxBombs++;
-        }
-
-        if (powerUps[i].type == 2)
-{
-    moveDelay -= 0.02f;
-
-    if (moveDelay < 0.05f)
-    {
-        moveDelay = 0.05f;
-    }
-}
-
         powerUps.erase(powerUps.begin() + i);
-
+        i--;
+    }
+    // 2. OYUNCU POWERUP'ı (SADECE MULTIPLAYER)
+    else if (gameState == MULTIPLAYER && player2GridX == powerUps[i].gridX && player2GridY == powerUps[i].gridY)
+    {
+        if (powerUps[i].type == 0) player2BombRange++;
+        else if (powerUps[i].type == 1) player2MaxBombs++;
+        else if (powerUps[i].type == 2)
+        {
+            player2MoveDelay -= 0.02f;
+            if (player2MoveDelay < 0.05f) player2MoveDelay = 0.05f;
+        }
+        powerUps.erase(powerUps.begin() + i);
         i--;
     }
 }
+
     
 if (moving)
 {
@@ -860,6 +1051,37 @@ playerSprite.setPosition({
     static_cast<float>(playerGridX * TILE_SIZE),
     static_cast<float>(playerGridY * TILE_SIZE)
 });
+
+if (gameState == MULTIPLAYER)
+{
+    if (player2Moving)
+    {
+        if (player2AnimationClock.getElapsedTime().asSeconds() > 0.15f)
+        {
+            player2CurrentFrame++;
+            if (player2CurrentFrame > 2)
+            {
+                player2CurrentFrame = 0;
+            }
+            player2AnimationClock.restart();
+        }
+    }
+    else
+    {
+        player2CurrentFrame = 1;
+    }
+    
+    player2Sprite.setTextureRect(sf::IntRect(
+        {player2CurrentFrame * FRAME_WIDTH,
+        player2CurrentDirection * FRAME_HEIGHT},
+        {FRAME_WIDTH, FRAME_HEIGHT}
+    ));
+
+    player2Sprite.setPosition({
+        static_cast<float>(player2GridX * TILE_SIZE),
+        static_cast<float>(player2GridY * TILE_SIZE)
+    });
+}
     
     window.clear(sf::Color::Black);
 
@@ -874,7 +1096,7 @@ playerSprite.setPosition({
          static_cast<float>(x * TILE_SIZE),
          static_cast<float>(y * TILE_SIZE)
     });
-    if (map[y][x] == '#')
+    if (currentMap[y][x] == '#')
     {
         logSprite.setPosition({
         static_cast<float>(x * TILE_SIZE),
@@ -889,7 +1111,7 @@ playerSprite.setPosition({
     window.draw(logSprite);
 
     }
-    else if (map[y][x] == '*')
+    else if (currentMap[y][x] == '*')
     {
         haySprite.setPosition({
         static_cast<float>(x * TILE_SIZE),
@@ -916,6 +1138,7 @@ playerSprite.setPosition({
         Explosion explosion;
         explosion.gridX = bombs[i].gridX;
         explosion.gridY = bombs[i].gridY;
+        explosion.owner = bombs[i].owner;
 
         explosions.push_back(explosion);
     bombs.erase(bombs.begin() + i);
@@ -962,112 +1185,181 @@ for (Bomb& bomb : bombs)
        }
        
      }
-     for (const Explosion& explosion : explosions)
+    
+for (const Explosion& explosion : explosions)
 {
+    // Patlamanın menzilini owner'a göre belirle
+    int range = (explosion.owner == 1) ? bombRange : player2BombRange;
+    
     bool hitPlayer = false;
 
-    if (playerGridX == explosion.gridX &&
-        playerGridY == explosion.gridY)
+    // ========== MERKEZ HASAR ==========
+    if (playerGridX == explosion.gridX && playerGridY == explosion.gridY)
     {
         hitPlayer = true;
     }
 
-    // üst
-    for (int i = 1; i <= bombRange; i++)
+    // 2. oyuncu merkez hasarı
+    if (gameState == MULTIPLAYER)
+    {
+        if (player2GridX == explosion.gridX && player2GridY == explosion.gridY)
+        {
+            if (player2DamageClock.getElapsedTime().asSeconds() > 1.0f)
+            {
+                player2Health--;
+                player2DamageClock.restart();
+                if (player2Health <= 0)
+                {
+                    gameState = SINGLEPLAYER;
+                }
+            }
+        }
+    }
+
+    // ========== ÜST YÖN ==========
+    for (int i = 1; i <= range; i++)
     {
         int y = explosion.gridY - i;
+        if (y < 0) break;
+        if (currentMap[y][explosion.gridX] == '#') break;
 
-        if (map[y][explosion.gridX] == '#')
-            break;
-
-        if (playerGridX == explosion.gridX &&
-            playerGridY == y)
+        // 1. oyuncu hasarı
+        if (playerGridX == explosion.gridX && playerGridY == y)
         {
             hitPlayer = true;
         }
 
-        if (map[y][explosion.gridX] == '*')
-            break;
+        // 2. oyuncu hasarı
+        if (gameState == MULTIPLAYER)
+        {
+            if (player2GridX == explosion.gridX && player2GridY == y)
+            {
+                if (player2DamageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    player2Health--;
+                    player2DamageClock.restart();
+                    if (player2Health <= 0) gameState = SINGLEPLAYER;
+                }
+            }
+        }
+
+        if (currentMap[y][explosion.gridX] == '*') break;
     }
 
-    // alt
-    for (int i = 1; i <= bombRange; i++)
+    // ========== ALT YÖN ==========
+    for (int i = 1; i <= range; i++)
     {
         int y = explosion.gridY + i;
+        if (y >= MAP_HEIGHT) break;
+        if (currentMap[y][explosion.gridX] == '#') break;
 
-        if (map[y][explosion.gridX] == '#')
-            break;
-
-        if (playerGridX == explosion.gridX &&
-            playerGridY == y)
+        // 1. oyuncu hasarı
+        if (playerGridX == explosion.gridX && playerGridY == y)
         {
             hitPlayer = true;
         }
 
-        if (map[y][explosion.gridX] == '*')
-            break;
+        // 2. oyuncu hasarı
+        if (gameState == MULTIPLAYER)
+        {
+            if (player2GridX == explosion.gridX && player2GridY == y)
+            {
+                if (player2DamageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    player2Health--;
+                    player2DamageClock.restart();
+                    if (player2Health <= 0) gameState = SINGLEPLAYER;
+                }
+            }
+        }
+
+        if (currentMap[y][explosion.gridX] == '*') break;
     }
 
-    // sol
-    for (int i = 1; i <= bombRange; i++)
+    // ========== SOL YÖN ==========
+    for (int i = 1; i <= range; i++)
     {
         int x = explosion.gridX - i;
+        if (x < 0) break;
+        if (currentMap[explosion.gridY][x] == '#') break;
 
-        if (map[explosion.gridY][x] == '#')
-            break;
-
-        if (playerGridX == x &&
-            playerGridY == explosion.gridY)
+        // 1. oyuncu hasarı
+        if (playerGridX == x && playerGridY == explosion.gridY)
         {
             hitPlayer = true;
         }
 
-        if (map[explosion.gridY][x] == '*')
-            break;
+        // 2. oyuncu hasarı
+        if (gameState == MULTIPLAYER)
+        {
+            if (player2GridX == x && player2GridY == explosion.gridY)
+            {
+                if (player2DamageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    player2Health--;
+                    player2DamageClock.restart();
+                    if (player2Health <= 0) gameState = SINGLEPLAYER;
+                }
+            }
+        }
+
+        if (currentMap[explosion.gridY][x] == '*') break;
     }
 
-    // sag
-    for (int i = 1; i <= bombRange; i++)
+    // ========== SAĞ YÖN ==========
+    for (int i = 1; i <= range; i++)
     {
         int x = explosion.gridX + i;
+        if (x >= MAP_WIDTH) break;
+        if (currentMap[explosion.gridY][x] == '#') break;
 
-        if (map[explosion.gridY][x] == '#')
-            break;
-
-        if (playerGridX == x &&
-            playerGridY == explosion.gridY)
+        // 1. oyuncu hasarı
+        if (playerGridX == x && playerGridY == explosion.gridY)
         {
             hitPlayer = true;
         }
 
-        if (map[explosion.gridY][x] == '*')
-            break;
+        // 2. oyuncu hasarı
+        if (gameState == MULTIPLAYER)
+        {
+            if (player2GridX == x && player2GridY == explosion.gridY)
+            {
+                if (player2DamageClock.getElapsedTime().asSeconds() > 1.0f)
+                {
+                    player2Health--;
+                    player2DamageClock.restart();
+                    if (player2Health <= 0) gameState = SINGLEPLAYER;
+                }
+            }
+        }
+
+        if (currentMap[explosion.gridY][x] == '*') break;
     }
 
+    // ========== OYUNCU HASARINI UYGULA ==========
     if (hitPlayer)
     {
-       if (damageClock.getElapsedTime().asSeconds() > 1.0f)
-    {
-        playerHealth--;
-
-        damageClock.restart();
-
-        if (playerHealth <= 0)
+        if (damageClock.getElapsedTime().asSeconds() > 1.0f)
         {
-            window.close();
+            playerHealth--;
+            damageClock.restart();
+            if (playerHealth <= 0)
+            {
+                window.close();
+            }
         }
     }
-    }
 }
+    
      
     for (const Explosion& explosion : explosions)
 {
     int gridX = explosion.gridX;
     int gridY = explosion.gridY;
 
-    if (map[gridY][gridX] == '*')
+    if (currentMap[gridY][gridX] == '*')
     {
-        map[gridY][gridX] = '.';
+        currentMap[gridY][gridX] = '.';
     }
 
     // üst
@@ -1075,12 +1367,12 @@ for (Bomb& bomb : bombs)
     {
         int y = gridY - i;
 
-        if (map[y][gridX] == '#')
+        if (currentMap[y][gridX] == '#')
             break;
 
-        if (map[y][gridX] == '*')
+        if (currentMap[y][gridX] == '*')
         {
-            map[y][gridX] = '.';
+            currentMap[y][gridX] = '.';
              if (rand() % 100 < 35)
     {
         PowerUp p;
@@ -1113,12 +1405,12 @@ for (Bomb& bomb : bombs)
     {
         int y = gridY + i;
 
-        if (map[y][gridX] == '#')
+        if (currentMap[y][gridX] == '#')
             break;
 
-        if (map[y][gridX] == '*')
+        if (currentMap[y][gridX] == '*')
         {
-            map[y][gridX] = '.';
+            currentMap[y][gridX] = '.';
              if (rand() % 100 < 35)
     {
         PowerUp p;
@@ -1139,12 +1431,12 @@ for (Bomb& bomb : bombs)
     {
         int x = gridX - i;
 
-        if (map[gridY][x] == '#')
+        if (currentMap[gridY][x] == '#')
             break;
 
-        if (map[gridY][x] == '*')
+        if (currentMap[gridY][x] == '*')
         {
-            map[gridY][x] = '.';
+            currentMap[gridY][x] = '.';
 
             if (rand() % 100 < 35)
     {
@@ -1168,12 +1460,12 @@ for (Bomb& bomb : bombs)
     {
         int x = gridX + i;
 
-        if (map[gridY][x] == '#')
+        if (currentMap[gridY][x] == '#')
             break;
 
-        if (map[gridY][x] == '*')
+        if (currentMap[gridY][x] == '*')
         {
-            map[gridY][x] = '.';
+            currentMap[gridY][x] = '.';
 
             if (rand() % 100 < 35)
     {
@@ -1211,7 +1503,7 @@ for (Bomb& bomb : bombs)
         {
             int y = explosion.gridY - i;
 
-            if (map[y][explosion.gridX] == '#')
+            if (currentMap[y][explosion.gridX] == '#')
                 break;
 
             if (enemy.gridX == explosion.gridX &&
@@ -1220,7 +1512,7 @@ for (Bomb& bomb : bombs)
                 hit = true;
             }
 
-            if (map[y][explosion.gridX] == '*')
+            if (currentMap[y][explosion.gridX] == '*')
                 break;
         }
 
@@ -1229,7 +1521,7 @@ for (Bomb& bomb : bombs)
         {
             int y = explosion.gridY + i;
 
-            if (map[y][explosion.gridX] == '#')
+            if (currentMap[y][explosion.gridX] == '#')
                 break;
 
             if (enemy.gridX == explosion.gridX &&
@@ -1238,7 +1530,7 @@ for (Bomb& bomb : bombs)
                 hit = true;
             }
 
-            if (map[y][explosion.gridX] == '*')
+            if (currentMap[y][explosion.gridX] == '*')
                 break;
         }
 
@@ -1247,7 +1539,7 @@ for (Bomb& bomb : bombs)
         {
             int x = explosion.gridX - i;
 
-            if (map[explosion.gridY][x] == '#')
+            if (currentMap[explosion.gridY][x] == '#')
                 break;
 
             if (enemy.gridX == x &&
@@ -1256,7 +1548,7 @@ for (Bomb& bomb : bombs)
                 hit = true;
             }
 
-            if (map[explosion.gridY][x] == '*')
+            if (currentMap[explosion.gridY][x] == '*')
                 break;
         }
 
@@ -1265,7 +1557,7 @@ for (Bomb& bomb : bombs)
         {
             int x = explosion.gridX + i;
 
-            if (map[explosion.gridY][x] == '#')
+            if (currentMap[explosion.gridY][x] == '#')
                 break;
 
             if (enemy.gridX == x &&
@@ -1274,7 +1566,7 @@ for (Bomb& bomb : bombs)
                 hit = true;
             }
 
-            if (map[explosion.gridY][x] == '*')
+            if (currentMap[explosion.gridY][x] == '*')
                 break;
         }
 
@@ -1286,20 +1578,24 @@ for (Bomb& bomb : bombs)
     }
 }
      
-        for (const Explosion& explosion : explosions)
+  for (const Explosion& explosion : explosions)
 {
+    // Patlamanın menzilini owner'a göre belirle
+    int range = (explosion.owner == 1) ? bombRange : player2BombRange;
+    
+    // ========== MERKEZ ÇİZİM ==========
     explosionSprite.setPosition({
         static_cast<float>(explosion.gridX * TILE_SIZE),
         static_cast<float>(explosion.gridY * TILE_SIZE)
     });
     window.draw(explosionSprite);
     
-    // Üst
-    for (int i = 1; i <= bombRange; i++)
+    // ========== ÜST YÖN ÇİZİM ==========
+    for (int i = 1; i <= range; i++)
     {
         int y = explosion.gridY - i;
         if (y < 0) break;
-        if (map[y][explosion.gridX] == '#') break;
+        if (currentMap[y][explosion.gridX] == '#') break;
         
         explosionSprite.setPosition({
             static_cast<float>(explosion.gridX * TILE_SIZE),
@@ -1307,15 +1603,15 @@ for (Bomb& bomb : bombs)
         });
         window.draw(explosionSprite);
         
-        if (map[y][explosion.gridX] == '*') break;
+        if (currentMap[y][explosion.gridX] == '*') break;
     }
     
-    // alt
-    for (int i = 1; i <= bombRange; i++)
+    // ========== ALT YÖN ÇİZİM ==========
+    for (int i = 1; i <= range; i++)
     {
         int y = explosion.gridY + i;
         if (y >= MAP_HEIGHT) break;
-        if (map[y][explosion.gridX] == '#') break;
+        if (currentMap[y][explosion.gridX] == '#') break;
         
         explosionSprite.setPosition({
             static_cast<float>(explosion.gridX * TILE_SIZE),
@@ -1323,15 +1619,15 @@ for (Bomb& bomb : bombs)
         });
         window.draw(explosionSprite);
         
-        if (map[y][explosion.gridX] == '*') break;
+        if (currentMap[y][explosion.gridX] == '*') break;
     }
     
-    // sol
-    for (int i = 1; i <= bombRange; i++)
+    // ========== SOL YÖN ÇİZİM ==========
+    for (int i = 1; i <= range; i++)
     {
         int x = explosion.gridX - i;
         if (x < 0) break;
-        if (map[explosion.gridY][x] == '#') break;
+        if (currentMap[explosion.gridY][x] == '#') break;
         
         explosionSprite.setPosition({
             static_cast<float>(x * TILE_SIZE),
@@ -1339,15 +1635,15 @@ for (Bomb& bomb : bombs)
         });
         window.draw(explosionSprite);
         
-        if (map[explosion.gridY][x] == '*') break;
+        if (currentMap[explosion.gridY][x] == '*') break;
     }
     
-    // sag
-    for (int i = 1; i <= bombRange; i++)
+    // ========== SAĞ YÖN ÇİZİM ==========
+    for (int i = 1; i <= range; i++)
     {
         int x = explosion.gridX + i;
         if (x >= MAP_WIDTH) break;
-        if (map[explosion.gridY][x] == '#') break;
+        if (currentMap[explosion.gridY][x] == '#') break;
         
         explosionSprite.setPosition({
             static_cast<float>(x * TILE_SIZE),
@@ -1355,7 +1651,7 @@ for (Bomb& bomb : bombs)
         });
         window.draw(explosionSprite);
         
-        if (map[explosion.gridY][x] == '*') break;
+        if (currentMap[explosion.gridY][x] == '*') break;
     }
 }
     
@@ -1371,6 +1667,8 @@ for (int i = 0; i < enemies.size(); i++)
     }
 }
 
+if (gameState == SINGLEPLAYER)
+{
 for (Enemy& enemy : enemies)
 {
     if (enemy.animationClock.getElapsedTime().asSeconds() > 0.15f)
@@ -1425,6 +1723,7 @@ for (Enemy& enemy : enemies)
         window.draw(butcherSprite);
     }
 }
+}
 
 for (const PowerUp& p : powerUps)
 {
@@ -1452,6 +1751,10 @@ for (const PowerUp& p : powerUps)
         });
         window.draw(wormSprite);
     }
+}
+if (gameState == MULTIPLAYER)
+{
+    window.draw(player2Sprite);
 }
  window.draw(playerSprite);
     window.display();
